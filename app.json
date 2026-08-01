@@ -1,0 +1,62 @@
+{
+  "expo": {
+    "name": "Emergencias 168",
+    "slug": "emergencias-168",
+    "scheme": "emergencias168",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "bo.gob.emergencias168",
+      "config": {
+        "usesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "bo.gob.emergencias168",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": true
+        }
+      ],
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./src/shared/assets/fonts/WorkSans-Regular.ttf",
+            "./src/shared/assets/fonts/WorkSans-Medium.ttf",
+            "./src/shared/assets/fonts/WorkSans-SemiBold.ttf",
+            "./src/shared/assets/fonts/WorkSans-Bold.ttf"
+          ]
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
+        }
+      ]
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+export const Routes = {
+  Login: 'Login',
+  Register: 'Register',
+  MainStack: 'MainStack',
+  Dashboard: 'Dashboard',
+  Emergency: 'Emergency',
+  EmergencyType: 'EmergencyType',
+  Triage: 'Triage',
+  ApiCentral: 'ApiCentral',
+  CaseTracking: 'CaseTracking',
+  Evidence: 'Evidence',
+  HealthCenters: 'HealthCenters',
+  Information: 'Information',
+  Profile: 'Profile',
+  ProfileEdit: 'ProfileEdit',
+  History: 'History',
+} as const;

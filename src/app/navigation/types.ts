@@ -1,0 +1,36 @@
+import type { NavigatorScreenParams } from '@react-navigation/native';
+
+export type AuthStackParamList = {
+  Login: undefined;
+  Register: undefined;
+};
+
+export type MainStackParamList = {
+  Dashboard: undefined;
+  Emergency:
+    | {
+        flow?: 'direct' | 'guided';
+        quickAccess?: string;
+      }
+    | undefined;
+  EmergencyType: undefined;
+  Triage: undefined;
+  ApiCentral: undefined;
+  CaseTracking: undefined;
+  Evidence: undefined;
+  HealthCenters: undefined;
+  Information: undefined;
+  Profile: undefined;
+  ProfileEdit: undefined;
+  History: undefined;
+};
+
+export type MainDrawerParamList = MainStackParamList & {
+  ComponentsShowcase: undefined;
+  LayoutShowcase: undefined;
+  ThemeShowcase: undefined;
+};
+
+export type RootStackParamList = {
+  MainStack: NavigatorScreenParams<MainStackParamList>;
+};
