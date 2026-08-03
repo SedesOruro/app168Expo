@@ -1,19 +1,24 @@
-import React, { ReactElement, useState } from 'react';
+import React, { ReactElement, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import type { MainStackParamList } from '../../../../app/navigation/types';
 import { EmergencyFlowSteps } from '../components/EmergencyFlowSteps';
+import { emergencyApi } from '../../data/EmergencyApi';
+import { getCurrentCoordinates } from '../../data/locationService';
+import { useEmergencyFlow } from '../providers/EmergencyFlowProvider';
 
 type EmergencyNavigation = NativeStackNavigationProp<
   MainStackParamList,
@@ -26,7 +31,10 @@ const RED = '#F63F5F';
 export const EmergencyScreen = (): ReactElement => {
   const navigation = useNavigation<EmergencyNavigation>();
   const route = useRoute<EmergencyRoute>();
+  const { draft, updateDraft, setCurrentEmergency } = useEmergencyFlow();
   const [canSpeak, setCanSpeak] = useState(true);
+  const [locating, setLocating] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const flow = route.params?.flow ?? 'guided';
   const isDirectFlow = flow === 'direct';
   const emergencyLabel = isDirectFlow
@@ -36,8 +44,68 @@ export const EmergencyScreen = (): ReactElement => {
     ? ['168', 'Confirmar']
     : ['Acceso', 'Confirmar', 'Tipo', 'Triage', 'Central', 'Seguimiento'];
 
-  const onConfirm = (): void => {
-    navigation.navigate(isDirectFlow ? 'ApiCentral' : 'EmergencyType');
+  useEffect(() => {
+    updateDraft({ flow });
+    getCurrentCoordinates()
+      .then(location => updateDraft({ location }))
+      .catch(error =>
+        Alert.alert(
+          'Ubicacion requerida',
+          error instanceof Error ? error.message : 'No se pudo obtener la ubicacion.',
+        ),
+      )
+      .finally(() => setLocating(false));
+  }, [flow, updateDraft]);
+
+  useEffect(() => {
+    updateDraft({ canSpeak });
+  }, [canSpeak, updateDraft]);
+
+  const onConfirm = async (): Promise<void> => {
+    let location = draft.location;
+    if (!location) {
+      setLocating(true);
+      try {
+        location = await getCurrentCoordinates();
+        updateDraft({ location });
+      } catch (error) {
+        Alert.alert(
+          'No se puede enviar la alerta',
+          error instanceof Error ? error.message : 'Ubicacion no disponible.',
+        );
+        return;
+      } finally {
+        setLocating(false);
+      }
+    }
+
+    updateDraft({ flow, canSpeak, location });
+    if (!isDirectFlow) {
+      navigation.navigate('EmergencyType');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const emergency = await emergencyApi.createEmergency({
+        ...location,
+        typeCode: 'MEDICA',
+        severity: 'ALTA',
+        canSpeak,
+        locationConfirmed: true,
+        flow: 'direct',
+        triage: draft.triage,
+      });
+      setCurrentEmergency(emergency);
+      navigation.navigate('ApiCentral');
+    } catch (error) {
+      Alert.alert(
+        'No se pudo enviar la emergencia',
+        error instanceof Error ? error.message : 'Intente nuevamente.',
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -77,11 +145,17 @@ export const EmergencyScreen = (): ReactElement => {
           </View>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Ubicacion</Text>
-            <Text style={styles.summaryValue}>Detectada</Text>
+            <Text style={styles.summaryValue}>
+              {locating
+                ? 'Detectando...'
+                : draft.location
+                  ? `${draft.location.latitude.toFixed(5)}, ${draft.location.longitude.toFixed(5)}`
+                  : 'No disponible'}
+            </Text>
           </View>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Bateria</Text>
-            <Text style={styles.summaryValue}>42%</Text>
+            <Text style={styles.summaryLabel}>Modo</Text>
+            <Text style={styles.summaryValue}>{canSpeak ? 'Puede hablar' : 'Silencioso'}</Text>
           </View>
         </View>
 
@@ -123,12 +197,17 @@ export const EmergencyScreen = (): ReactElement => {
 
         <Pressable
           accessibilityRole="button"
+          disabled={locating || submitting}
           style={({ pressed }) => [styles.sendButton, pressed && styles.pressed]}
           onPress={onConfirm}
         >
-          <Text style={styles.sendButtonText}>
-            {isDirectFlow ? 'ENVIAR ALERTA 168' : 'CONFIRMAR Y CLASIFICAR'}
-          </Text>
+          {submitting || locating ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.sendButtonText}>
+              {isDirectFlow ? 'ENVIAR ALERTA 168' : 'CONFIRMAR Y CLASIFICAR'}
+            </Text>
+          )}
         </Pressable>
 
         <Pressable

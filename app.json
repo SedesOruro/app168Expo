@@ -56,7 +56,29 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Permitir que Emergencias 168 use su ubicacion para reportar y localizar una emergencia."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permitir que Emergencias 168 acceda a imagenes de evidencia.",
+          "cameraPermission": "Permitir que Emergencias 168 tome fotografias de evidencia.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Permitir que Emergencias 168 grabe audio de evidencia."
+        }
+      ],
+      "expo-asset",
+      "@maplibre/maplibre-react-native"
     ]
   }
 }

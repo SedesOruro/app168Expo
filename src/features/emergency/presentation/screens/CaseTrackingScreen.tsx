@@ -1,36 +1,59 @@
-import React, { ReactElement } from 'react';
+import React, { ReactElement, useEffect } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
+  Linking,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
 
 import type { MainStackParamList } from '../../../../app/navigation/types';
 import { EmergencyFlowSteps } from '../components/EmergencyFlowSteps';
+import { emergencyApi } from '../../data/EmergencyApi';
+import { useEmergencyFlow } from '../providers/EmergencyFlowProvider';
 
 type CaseTrackingNavigation = NativeStackNavigationProp<
   MainStackParamList,
   'CaseTracking'
 >;
+type CaseTrackingRoute = RouteProp<MainStackParamList, 'CaseTracking'>;
 
 const RED = '#F63F5F';
 
-const timeline = [
-  { label: 'Recibido por central', done: true },
-  { label: 'Operador asignado', done: true },
-  { label: 'Unidad en camino', done: false },
-  { label: 'Atencion finalizada', done: false },
-];
-
 export const CaseTrackingScreen = (): ReactElement => {
   const navigation = useNavigation<CaseTrackingNavigation>();
+  const route = useRoute<CaseTrackingRoute>();
+  const { currentEmergency, setCurrentEmergency } = useEmergencyFlow();
+  const emergencyUuid = route.params?.emergencyUuid ?? currentEmergency?.uuid;
+  const query = useQuery({
+    queryKey: ['emergency', emergencyUuid],
+    queryFn: () => emergencyApi.getEmergency(String(emergencyUuid)),
+    enabled: Boolean(emergencyUuid),
+    refetchInterval: 10_000,
+  });
+  const emergency = query.data ?? currentEmergency;
+
+  useEffect(() => {
+    if (query.data) setCurrentEmergency(query.data);
+  }, [query.data, setCurrentEmergency]);
+
+  const callOperator = async (): Promise<void> => {
+    const phone = emergency?.operador?.telefono;
+    if (!phone) {
+      Alert.alert('Operador no disponible', 'La central aun no asigno un numero de contacto.');
+      return;
+    }
+    await Linking.openURL(`tel:${phone}`);
+  };
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -50,30 +73,42 @@ export const CaseTrackingScreen = (): ReactElement => {
       <ScrollView contentContainerStyle={styles.content}>
         <EmergencyFlowSteps activeStep={6} />
 
+        {!emergency && query.isLoading ? <ActivityIndicator size="large" color={RED} /> : null}
         <View style={styles.successIcon}>
           <MaterialCommunityIcons name="check-bold" size={48} color="#FFFFFF" />
         </View>
-        <Text style={styles.title}>Emergencia enviada OK</Text>
-        <Text style={styles.code}>Codigo: EMG-2026-000231</Text>
+        <Text style={styles.title}>
+          {emergency?.estado?.es_final ? 'Atencion concluida' : 'Emergencia en seguimiento'}
+        </Text>
+        <Text style={styles.code}>Codigo: {emergency?.codigo_publico ?? 'Sin registro'}</Text>
 
         <View style={styles.timelineCard}>
           <Text style={styles.sectionTitle}>Estado en tiempo real</Text>
-          {timeline.map((item, index) => (
-            <View key={item.label} style={styles.timelineRow}>
+          {(emergency?.historial ?? []).map((item, index, history) => (
+            <View key={item.id} style={styles.timelineRow}>
               <View style={styles.timelineMarkerWrap}>
-                <View style={[styles.dot, item.done && styles.dotDone]} />
-                {index < timeline.length - 1 ? <View style={styles.line} /> : null}
+                <View style={[styles.dot, styles.dotDone]} />
+                {index < history.length - 1 ? <View style={styles.line} /> : null}
               </View>
-              <Text style={[styles.timelineText, item.done && styles.timelineTextDone]}>
-                {item.label}
-              </Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.timelineText, styles.timelineTextDone]}>
+                  {item.estadoNuevo?.nombre ?? 'Actualizacion'}
+                </Text>
+                <Text style={styles.timelineDate}>
+                  {new Date(item.created_at).toLocaleString()}
+                </Text>
+              </View>
             </View>
           ))}
+          {!emergency?.historial?.length ? (
+            <Text style={styles.timelineText}>Esperando actualizaciones de la central.</Text>
+          ) : null}
         </View>
 
         <Pressable
           accessibilityRole="button"
           style={({ pressed }) => [styles.operatorButton, pressed && styles.pressed]}
+          onPress={callOperator}
         >
           <MaterialCommunityIcons name="phone" size={24} color="#FFFFFF" />
           <Text style={styles.operatorText}>LLAMAR OPERADOR</Text>
@@ -82,7 +117,9 @@ export const CaseTrackingScreen = (): ReactElement => {
         <Pressable
           accessibilityRole="button"
           style={styles.secondaryButton}
-          onPress={() => navigation.navigate('Evidence')}
+          onPress={() =>
+            navigation.navigate('Evidence', { emergencyUuid: emergency?.uuid })
+          }
         >
           <MaterialCommunityIcons name="camera-plus" size={24} color={RED} />
           <Text style={styles.secondaryText}>Agregar evidencia opcional</Text>
@@ -200,6 +237,12 @@ const styles = StyleSheet.create({
   timelineTextDone: {
     color: '#303030',
     fontWeight: '900',
+  },
+  timelineDate: {
+    marginTop: 3,
+    color: '#777777',
+    fontSize: 13,
+    lineHeight: 18,
   },
   operatorButton: {
     width: '100%',

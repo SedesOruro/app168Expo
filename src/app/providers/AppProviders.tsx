@@ -5,6 +5,7 @@ import { AuthProvider } from './AuthProvider';
 import { QueryProvider } from './QueryProvider';
 import { SocketProvider } from './SocketProvider';
 import { AppThemeProvider } from './ThemeProvider';
+import { EmergencyFlowProvider } from '../../features/emergency/presentation/providers/EmergencyFlowProvider';
 
 type AppProvidersProps = {
   children: ReactNode;
@@ -15,7 +16,9 @@ export const AppProviders = ({ children }: AppProvidersProps): ReactElement => (
     <AppThemeProvider>
       <QueryProvider>
         <AuthProvider>
-          <SocketProvider>{children}</SocketProvider>
+          <EmergencyFlowProvider>
+            <SocketProvider>{children}</SocketProvider>
+          </EmergencyFlowProvider>
         </AuthProvider>
       </QueryProvider>
     </AppThemeProvider>

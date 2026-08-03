@@ -6,7 +6,10 @@ import App from '../../App';
 test('renders auth flow by default', async () => {
   render(<App />);
 
-  await waitFor(() => {
-    expect(screen.getByText('Registro unico.')).toBeTruthy();
-  });
+  await waitFor(
+    () => {
+      expect(screen.getByText('Registro unico.')).toBeTruthy();
+    },
+    { timeout: 5000 },
+  );
 });

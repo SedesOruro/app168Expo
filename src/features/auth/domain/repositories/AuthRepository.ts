@@ -6,9 +6,18 @@ export type LoginCredentials = {
 };
 
 export type RegisterPayload = {
-  name: string;
+  names: string;
+  surnames: string;
+  document: string;
+  complement?: string;
+  birthDate: string;
+  phone: string;
+  address: string;
+  contactName: string;
+  contactPhone: string;
   email: string;
   password: string;
+  acceptedTerms: boolean;
 };
 
 export interface AuthRepository {

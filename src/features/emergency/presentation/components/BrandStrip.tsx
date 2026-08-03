@@ -9,11 +9,11 @@ export const BrandStrip = (): ReactElement => (
     </View>
     <View style={styles.brandBlock}>
       <View style={[styles.seal, styles.multiSeal]} />
-      <Text style={styles.smallText}>Gobernacion{'\n'}Cochabamba</Text>
+      <Text style={styles.smallText}>Gobernacion{'\n'}Oruro</Text>
     </View>
     <View style={styles.brandBlock}>
       <View style={[styles.seal, styles.healthSeal]} />
-      <Text style={styles.sedesText}>SEDES{'\n'}Cochabamba</Text>
+      <Text style={styles.sedesText}>SEDES{'\n'}Oruro</Text>
     </View>
   </View>
 );

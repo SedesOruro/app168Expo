@@ -1,19 +1,24 @@
 import React, { ReactElement, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import type { MainStackParamList } from '../../../../app/navigation/types';
 import { EmergencyFlowSteps } from '../components/EmergencyFlowSteps';
+import { emergencyApi } from '../../data/EmergencyApi';
+import { getCurrentCoordinates } from '../../data/locationService';
+import { useEmergencyFlow } from '../providers/EmergencyFlowProvider';
 
 type TriageNavigation = NativeStackNavigationProp<MainStackParamList, 'Triage'>;
 
@@ -27,6 +32,8 @@ const triageQuestions = [
 
 export const TriageScreen = (): ReactElement => {
   const navigation = useNavigation<TriageNavigation>();
+  const { draft, updateDraft, setCurrentEmergency } = useEmergencyFlow();
+  const [submitting, setSubmitting] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string>>({
     breathing: 'No se',
     conscious: 'No se',
@@ -35,6 +42,38 @@ export const TriageScreen = (): ReactElement => {
 
   const setAnswer = (key: string, value: string): void => {
     setAnswers(current => ({ ...current, [key]: value }));
+  };
+
+  const onSubmit = async (): Promise<void> => {
+    setSubmitting(true);
+    try {
+      const location = draft.location ?? (await getCurrentCoordinates());
+      const normalizedAnswers = Object.fromEntries(
+        Object.entries(answers).map(([key, value]) => [
+          key,
+          value === 'Si' ? 'SI' : value === 'No' ? 'NO' : 'NO_SE',
+        ]),
+      );
+      updateDraft({ location, triage: normalizedAnswers });
+      const emergency = await emergencyApi.createEmergency({
+        ...location,
+        typeCode: draft.typeCode,
+        severity: draft.severity,
+        canSpeak: draft.canSpeak,
+        locationConfirmed: true,
+        flow: draft.flow,
+        triage: normalizedAnswers,
+      });
+      setCurrentEmergency(emergency);
+      navigation.navigate('ApiCentral');
+    } catch (error) {
+      Alert.alert(
+        'No se pudo enviar la emergencia',
+        error instanceof Error ? error.message : 'Intente nuevamente.',
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -85,11 +124,18 @@ export const TriageScreen = (): ReactElement => {
 
         <Pressable
           accessibilityRole="button"
+          disabled={submitting}
           style={({ pressed }) => [styles.sendButton, pressed && styles.pressed]}
-          onPress={() => navigation.navigate('ApiCentral')}
+          onPress={onSubmit}
         >
-          <MaterialCommunityIcons name="send" size={24} color="#FFFFFF" />
-          <Text style={styles.sendText}>Enviar ahora</Text>
+          {submitting ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <>
+              <MaterialCommunityIcons name="send" size={24} color="#FFFFFF" />
+              <Text style={styles.sendText}>Enviar ahora</Text>
+            </>
+          )}
         </Pressable>
       </ScrollView>
     </SafeAreaView>

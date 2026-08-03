@@ -16,6 +16,37 @@ jest.mock('expo-splash-screen', () => ({
   hideAsync: jest.fn().mockResolvedValue(undefined),
 }));
 
+jest.mock('expo-audio', () => ({
+  AudioModule: { requestRecordingPermissionsAsync: jest.fn() },
+  RecordingPresets: { HIGH_QUALITY: {} },
+  setAudioModeAsync: jest.fn(),
+  useAudioRecorder: () => ({
+    prepareToRecordAsync: jest.fn(),
+    record: jest.fn(),
+    stop: jest.fn(),
+    uri: null,
+  }),
+  useAudioRecorderState: () => ({ isRecording: false, durationMillis: 0 }),
+}));
+
+jest.mock('expo-image-picker', () => ({
+  requestCameraPermissionsAsync: jest.fn(),
+  launchCameraAsync: jest.fn(),
+}));
+
+jest.mock('expo-location', () => ({
+  Accuracy: { High: 4 },
+  requestForegroundPermissionsAsync: jest.fn(),
+  getLastKnownPositionAsync: jest.fn(),
+  getCurrentPositionAsync: jest.fn(),
+}));
+
+jest.mock('@maplibre/maplibre-react-native', () => ({
+  Camera: 'Camera',
+  Map: 'Map',
+  Marker: 'Marker',
+}));
+
 jest.mock('@react-navigation/native', () => {
   return {
     NavigationContainer: ({ children }: { children: ReactNode }) => children,

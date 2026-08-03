@@ -1,46 +1,36 @@
 import React, { ReactElement } from 'react';
 import {
-  SafeAreaView,
+  ActivityIndicator,
+  Pressable,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
 
 import type { MainStackParamList } from '../../../../app/navigation/types';
 import { BottomTabBar } from '../components/BottomTabBar';
+import { emergencyApi } from '../../data/EmergencyApi';
+import { useEmergencyFlow } from '../providers/EmergencyFlowProvider';
 
 type HistoryNavigation = NativeStackNavigationProp<MainStackParamList, 'History'>;
 
 const RED = '#F63F5F';
 
-const emergencies = [
-  {
-    code: 'EMG-2026-000231',
-    type: 'Medica',
-    status: 'Finalizada',
-    date: '22/05/2026 - 18:42',
-  },
-  {
-    code: 'EMG-2026-000198',
-    type: 'Accidente',
-    status: 'Cancelada',
-    date: '18/05/2026 - 09:10',
-  },
-  {
-    code: 'EMG-2026-000144',
-    type: 'Violencia',
-    status: 'Derivada',
-    date: '03/05/2026 - 22:18',
-  },
-];
-
 export const HistoryScreen = (): ReactElement => {
   const navigation = useNavigation<HistoryNavigation>();
+  const { setCurrentEmergency } = useEmergencyFlow();
+  const query = useQuery({
+    queryKey: ['emergency-history'],
+    queryFn: emergencyApi.listEmergencies,
+  });
+  const emergencies = query.data ?? [];
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -49,20 +39,31 @@ export const HistoryScreen = (): ReactElement => {
         <Text style={styles.title}>Mis emergencias</Text>
         <Text style={styles.subtitle}>Codigo, tipo, estado y fecha del evento.</Text>
 
+        {query.isLoading ? <ActivityIndicator size="large" color={RED} /> : null}
         {emergencies.map(item => (
-          <View key={item.code} style={styles.card}>
+          <Pressable
+            key={item.uuid}
+            style={styles.card}
+            onPress={() => {
+              setCurrentEmergency(item);
+              navigation.navigate('CaseTracking', { emergencyUuid: item.uuid });
+            }}
+          >
             <View style={styles.iconWrap}>
               <MaterialCommunityIcons name="clipboard-pulse" size={28} color={RED} />
             </View>
             <View style={styles.cardBody}>
-              <Text style={styles.code}>{item.code}</Text>
+              <Text style={styles.code}>{item.codigo_publico}</Text>
               <Text style={styles.meta}>
-                {item.type} | {item.status}
+                {item.tipo?.nombre ?? 'Emergencia'} | {item.estado?.nombre ?? 'Sin estado'}
               </Text>
-              <Text style={styles.date}>{item.date}</Text>
+              <Text style={styles.date}>{new Date(item.created_at).toLocaleString()}</Text>
             </View>
-          </View>
+          </Pressable>
         ))}
+        {!query.isLoading && emergencies.length === 0 ? (
+          <Text style={styles.emptyText}>Todavia no registro emergencias.</Text>
+        ) : null}
       </ScrollView>
       <BottomTabBar active="History" navigation={navigation} />
     </SafeAreaView>
@@ -134,5 +135,11 @@ const styles = StyleSheet.create({
     color: '#666666',
     fontSize: 15,
     lineHeight: 20,
+  },
+  emptyText: {
+    marginTop: 30,
+    color: '#666666',
+    fontSize: 16,
+    textAlign: 'center',
   },
 });

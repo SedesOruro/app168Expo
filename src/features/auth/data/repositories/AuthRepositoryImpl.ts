@@ -5,7 +5,7 @@ import type {
   RegisterPayload,
 } from '../../domain/repositories/AuthRepository';
 import type { AuthApi } from '../datasources/AuthApi';
-import { mapAuthSession } from '../mappers/userMapper';
+import { mapAuthSession, mapUser } from '../mappers/userMapper';
 
 export class AuthRepositoryImpl implements AuthRepository {
   constructor(private readonly api: AuthApi) {}
@@ -27,7 +27,6 @@ export class AuthRepositoryImpl implements AuthRepository {
   }
 
   async me(accessToken: string): Promise<User> {
-    const session = await this.api.refreshToken(accessToken);
-    return mapAuthSession(session).user;
+    return mapUser(await this.api.me(accessToken));
   }
 }

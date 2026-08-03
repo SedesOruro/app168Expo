@@ -1,13 +1,13 @@
 import React, { ReactElement } from 'react';
 import {
   Pressable,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -16,6 +16,7 @@ import type { MainStackParamList } from '../../../../app/navigation/types';
 import { BrandStrip } from '../../../emergency/presentation/components/BrandStrip';
 import { BottomTabBar } from '../../../emergency/presentation/components/BottomTabBar';
 import { EmergencyFlowSteps } from '../../../emergency/presentation/components/EmergencyFlowSteps';
+import { useAuth } from '../../../../app/providers/AuthProvider';
 
 type DashboardNavigation = NativeStackNavigationProp<
   MainStackParamList,
@@ -34,6 +35,7 @@ const quickActions = [
 
 export const DashboardScreen = (): ReactElement => {
   const navigation = useNavigation<DashboardNavigation>();
+  const { user } = useAuth();
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -44,10 +46,12 @@ export const DashboardScreen = (): ReactElement => {
         </View>
 
         <View style={styles.topStatus}>
-          <Text style={styles.greeting}>Hola, Gian</Text>
+          <Text style={styles.greeting}>
+            Hola, {user?.name?.split(' ')[0] || 'ciudadano'}
+          </Text>
           <View style={styles.gpsBadge}>
             <MaterialCommunityIcons name="crosshairs-gps" size={18} color="#138A49" />
-            <Text style={styles.gpsText}>GPS OK</Text>
+            <Text style={styles.gpsText}>GPS al enviar</Text>
           </View>
         </View>
 

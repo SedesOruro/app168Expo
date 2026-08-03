@@ -42,7 +42,15 @@ const request = async <T>(path: string, options: RequestOptions = {}): Promise<T
     const payload = text.length > 0 ? JSON.parse(text) : null;
 
     if (!response.ok) {
-      throw new ApiError('Request failed', response.status, payload);
+      const errorMessage =
+        payload && typeof payload === 'object'
+          ? String(
+              (payload as { error?: unknown; message?: unknown }).error ??
+                (payload as { message?: unknown }).message ??
+                'No se pudo completar la solicitud',
+            )
+          : 'No se pudo completar la solicitud';
+      throw new ApiError(errorMessage, response.status, payload);
     }
 
     return payload as T;

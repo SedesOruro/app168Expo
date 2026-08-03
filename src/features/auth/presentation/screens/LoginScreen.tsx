@@ -31,21 +31,24 @@ const LinkText = styled.Text`
 export const LoginScreen = (): ReactElement => {
   const navigation = useNavigation<LoginNavigation>();
   const { signIn } = useAuth();
-  const [email, setEmail] = useState('product@desarrollo.dev');
-  const [password, setPassword] = useState('production');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const onSubmit = async (): Promise<void> => {
     if (!isValidEmail(email)) {
-      Alert.alert('Invalid email', 'Please enter a valid email.');
+      Alert.alert('Correo no valido', 'Ingrese un correo electronico valido.');
       return;
     }
 
     setLoading(true);
     try {
       await signIn({ email, password });
-    } catch {
-      Alert.alert('Login failed', 'Check your credentials and try again.');
+    } catch (error) {
+      Alert.alert(
+        'No se pudo iniciar sesion',
+        error instanceof Error ? error.message : 'Revise sus credenciales.',
+      );
     } finally {
       setLoading(false);
     }
@@ -53,13 +56,13 @@ export const LoginScreen = (): ReactElement => {
 
   return (
     <AuthLayout
-      title="DESARROLLO MOVIL"
-      subtitle="Base full lista para auth, API, sockets y UI reusable."
+      title="EMERGENCIAS 168"
+      subtitle="Ingrese con su cuenta para solicitar y seguir asistencia."
     >
       <Form>
         <TextInput
-          accessibilityLabel="Email"
-          label="Email"
+          accessibilityLabel="Correo electronico"
+          label="Correo electronico"
           value={email}
           mode="outlined"
           autoCapitalize="none"
@@ -67,20 +70,20 @@ export const LoginScreen = (): ReactElement => {
           onChangeText={setEmail}
         />
         <TextInput
-          accessibilityLabel="Password"
-          label="Password"
+          accessibilityLabel="Contrasena"
+          label="Contrasena"
           value={password}
           mode="outlined"
           secureTextEntry
           onChangeText={setPassword}
         />
-        <PrimaryButton title="Sign in" loading={loading} onPress={onSubmit} />
+        <PrimaryButton title="Ingresar" loading={loading} onPress={onSubmit} />
         <LinkButton
           accessibilityRole="button"
-          accessibilityLabel="Create account"
+          accessibilityLabel="Crear cuenta"
           onPress={() => navigation.navigate('Register')}
         >
-          <LinkText>Create account</LinkText>
+          <LinkText>Crear cuenta</LinkText>
         </LinkButton>
       </Form>
     </AuthLayout>

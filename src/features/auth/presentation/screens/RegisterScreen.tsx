@@ -30,6 +30,8 @@ type RegistrationData = {
   address: string;
   contactName: string;
   contactPhone: string;
+  email: string;
+  password: string;
 };
 
 const initialData: RegistrationData = {
@@ -42,6 +44,8 @@ const initialData: RegistrationData = {
   address: '',
   contactName: '',
   contactPhone: '',
+  email: '',
+  password: '',
 };
 
 export const RegisterScreen = (): ReactElement => {
@@ -70,7 +74,13 @@ export const RegisterScreen = (): ReactElement => {
     }
 
     if (step === 2) {
-      return Boolean(form.birthDate && form.phone && form.address);
+      return Boolean(
+        form.birthDate &&
+          form.phone &&
+          form.address &&
+          form.email &&
+          form.password.length >= 8,
+      );
     }
 
     return Boolean(form.contactName && form.contactPhone && acceptedTerms);
@@ -89,11 +99,12 @@ export const RegisterScreen = (): ReactElement => {
 
     setLoading(true);
     try {
-      await signUp({
-        name: `${form.names} ${form.surnames}`.trim(),
-        email: 'demo@168.gob.bo',
-        password: 'demo-168',
-      });
+      await signUp({ ...form, acceptedTerms });
+    } catch (error) {
+      Alert.alert(
+        'No se pudo completar el registro',
+        error instanceof Error ? error.message : 'Intente nuevamente.',
+      );
     } finally {
       setLoading(false);
     }
@@ -216,6 +227,27 @@ export const RegisterScreen = (): ReactElement => {
                 outlineColor="#222222"
                 activeOutlineColor={BLUE}
               />
+              <TextInput
+                label="Correo electronico*"
+                mode="outlined"
+                value={form.email}
+                onChangeText={value => setField('email', value)}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                style={styles.input}
+                outlineColor="#222222"
+                activeOutlineColor={BLUE}
+              />
+              <TextInput
+                label="Contrasena (minimo 8 caracteres)*"
+                mode="outlined"
+                value={form.password}
+                onChangeText={value => setField('password', value)}
+                secureTextEntry
+                style={styles.input}
+                outlineColor="#222222"
+                activeOutlineColor={BLUE}
+              />
             </>
           )}
 
@@ -298,8 +330,8 @@ export const RegisterScreen = (): ReactElement => {
                 <Text style={styles.calendarMonth}>Diciembre de 2005</Text>
               </View>
               <View style={styles.weekRow}>
-                {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(day => (
-                  <Text key={day} style={styles.weekDay}>
+                {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((day, index) => (
+                  <Text key={`${day}-${index}`} style={styles.weekDay}>
                     {day}
                   </Text>
                 ))}

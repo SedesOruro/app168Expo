@@ -1,19 +1,20 @@
 import React, { ReactElement, useState } from 'react';
 import {
   Pressable,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import type { MainStackParamList } from '../../../../app/navigation/types';
 import { EmergencyFlowSteps } from '../components/EmergencyFlowSteps';
+import { useEmergencyFlow } from '../providers/EmergencyFlowProvider';
 
 type EmergencyTypeNavigation = NativeStackNavigationProp<
   MainStackParamList,
@@ -33,9 +34,19 @@ const emergencyTypes = [
 ] as const;
 
 const severities = ['Leve', 'Media', 'Alta'];
+const typeCodes: Record<string, string> = {
+  Accidente: 'ACCIDENTE',
+  Desmayo: 'MEDICA',
+  Dolor: 'MEDICA',
+  Parto: 'MEDICA',
+  Incendio: 'INCENDIO',
+  Violencia: 'SEGURIDAD',
+  Otro: 'OTRO',
+};
 
 export const EmergencyTypeScreen = (): ReactElement => {
   const navigation = useNavigation<EmergencyTypeNavigation>();
+  const { updateDraft } = useEmergencyFlow();
   const [selectedType, setSelectedType] = useState('Accidente');
   const [severity, setSeverity] = useState('Alta');
 
@@ -111,7 +122,13 @@ export const EmergencyTypeScreen = (): ReactElement => {
         <Pressable
           accessibilityRole="button"
           style={({ pressed }) => [styles.continueButton, pressed && styles.pressed]}
-          onPress={() => navigation.navigate('Triage')}
+          onPress={() => {
+            updateDraft({
+              typeCode: typeCodes[selectedType] ?? 'OTRO',
+              severity: severity.toUpperCase(),
+            });
+            navigation.navigate('Triage');
+          }}
         >
           <Text style={styles.continueText}>Continuar</Text>
         </Pressable>

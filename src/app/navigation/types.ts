@@ -16,8 +16,8 @@ export type MainStackParamList = {
   EmergencyType: undefined;
   Triage: undefined;
   ApiCentral: undefined;
-  CaseTracking: undefined;
-  Evidence: undefined;
+  CaseTracking: { emergencyUuid?: string } | undefined;
+  Evidence: { emergencyUuid?: string } | undefined;
   HealthCenters: undefined;
   Information: undefined;
   Profile: undefined;

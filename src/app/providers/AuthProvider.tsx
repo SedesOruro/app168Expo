@@ -6,6 +6,7 @@ import React, {
   useContext,
   useMemo,
   useState,
+  useEffect,
 } from 'react';
 
 import type { User } from '../../features/auth/domain/entities/User';
@@ -13,6 +14,11 @@ import type {
   LoginCredentials,
   RegisterPayload,
 } from '../../features/auth/domain/repositories/AuthRepository';
+import { AuthApi } from '../../features/auth/data/datasources/AuthApi';
+import { TokenStorage } from '../../features/auth/data/datasources/TokenStorage';
+import { AuthRepositoryImpl } from '../../features/auth/data/repositories/AuthRepositoryImpl';
+import { httpClient } from '../../shared/api/httpClient';
+import { secureStorage } from '../../shared/storage/secureStorage';
 
 type AuthStatus = 'checking' | 'authenticated' | 'guest';
 
@@ -31,37 +37,71 @@ type AuthProviderProps = {
   children: ReactNode;
 };
 
-const demoUser: User = {
-  id: 'demo-168',
-  name: 'Marilyn Susan Huanca Gutierrez',
-  email: 'demo@168.gob.bo',
-};
+const tokenStorage = new TokenStorage(secureStorage);
+const authRepository = new AuthRepositoryImpl(new AuthApi(httpClient));
 
 export const AuthProvider = ({ children }: AuthProviderProps): ReactElement => {
-  const [status, setStatus] = useState<AuthStatus>('guest');
+  const [status, setStatus] = useState<AuthStatus>('checking');
   const [user, setUser] = useState<User | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
 
-  const openDemoSession = useCallback(async (): Promise<void> => {
-    setUser(demoUser);
+  const applySession = useCallback(async (session: {
+    user: User;
+    accessToken: string;
+    refreshToken: string;
+  }): Promise<void> => {
+    await tokenStorage.saveTokens(session.accessToken, session.refreshToken);
+    setUser(session.user);
+    setAccessToken(session.accessToken);
     setStatus('authenticated');
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    const restore = async (): Promise<void> => {
+      try {
+        const refreshToken = await tokenStorage.getRefreshToken();
+        if (!refreshToken) {
+          if (active) setStatus('guest');
+          return;
+        }
+        const session = await authRepository.refreshToken(refreshToken);
+        if (active) await applySession(session);
+      } catch {
+        await tokenStorage.clear();
+        if (active) {
+          setUser(null);
+          setAccessToken(null);
+          setStatus('guest');
+        }
+      }
+    };
+    restore().catch(() => setStatus('guest'));
+    return () => {
+      active = false;
+    };
+  }, [applySession]);
+
   const signIn = useCallback(
-    async (_credentials: LoginCredentials): Promise<void> => {
-      await openDemoSession();
+    async (credentials: LoginCredentials): Promise<void> => {
+      await applySession(await authRepository.login(credentials));
     },
-    [openDemoSession],
+    [applySession],
   );
 
   const signUp = useCallback(
-    async (_payload: RegisterPayload): Promise<void> => {
-      await openDemoSession();
+    async (payload: RegisterPayload): Promise<void> => {
+      await applySession(await authRepository.register(payload));
     },
-    [openDemoSession],
+    [applySession],
   );
 
   const signOut = useCallback(async (): Promise<void> => {
+    const refreshToken = await tokenStorage.getRefreshToken();
+    await authRepository.logout(refreshToken).catch(() => undefined);
+    await tokenStorage.clear();
     setUser(null);
+    setAccessToken(null);
     setStatus('guest');
   }, []);
 
@@ -69,12 +109,12 @@ export const AuthProvider = ({ children }: AuthProviderProps): ReactElement => {
     () => ({
       status,
       user,
-      accessToken: status === 'authenticated' ? 'demo-token' : null,
+      accessToken,
       signIn,
       signUp,
       signOut,
     }),
-    [signIn, signOut, signUp, status, user],
+    [accessToken, signIn, signOut, signUp, status, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

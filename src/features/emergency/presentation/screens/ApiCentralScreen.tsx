@@ -1,19 +1,20 @@
 import React, { ReactElement } from 'react';
 import {
   Pressable,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import type { MainStackParamList } from '../../../../app/navigation/types';
 import { EmergencyFlowSteps } from '../components/EmergencyFlowSteps';
+import { useEmergencyFlow } from '../providers/EmergencyFlowProvider';
 
 type ApiCentralNavigation = NativeStackNavigationProp<
   MainStackParamList,
@@ -22,16 +23,29 @@ type ApiCentralNavigation = NativeStackNavigationProp<
 
 const RED = '#F63F5F';
 
-const payloadItems = [
-  { icon: 'account-check', label: 'Perfil del ciudadano', value: 'ID, telefono y contacto' },
-  { icon: 'crosshairs-gps', label: 'Ubicacion GPS', value: '-17.3895, -66.1568' },
-  { icon: 'clipboard-pulse', label: 'Tipo y gravedad', value: 'Accidente | Alta' },
-  { icon: 'medical-bag', label: 'Triage rapido', value: 'Respira, consciente, riesgo' },
-  { icon: 'battery-40', label: 'Bateria y hora', value: '42% | 18:42' },
-] as const;
-
 export const ApiCentralScreen = (): ReactElement => {
   const navigation = useNavigation<ApiCentralNavigation>();
+  const { currentEmergency } = useEmergencyFlow();
+  const payloadItems = [
+    { icon: 'identifier', label: 'Codigo', value: currentEmergency?.codigo_publico ?? 'Pendiente' },
+    {
+      icon: 'crosshairs-gps',
+      label: 'Ubicacion GPS',
+      value: currentEmergency
+        ? `${Number(currentEmergency.latitud).toFixed(5)}, ${Number(currentEmergency.longitud).toFixed(5)}`
+        : 'No disponible',
+    },
+    {
+      icon: 'clipboard-pulse',
+      label: 'Tipo y gravedad',
+      value: `${currentEmergency?.tipo?.nombre ?? 'Emergencia'} | ${currentEmergency?.gravedad ?? 'Sin clasificar'}`,
+    },
+    {
+      icon: 'medical-bag',
+      label: 'Estado inicial',
+      value: currentEmergency?.estado?.nombre ?? 'Procesando',
+    },
+  ] as const;
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -54,14 +68,14 @@ export const ApiCentralScreen = (): ReactElement => {
         <View style={styles.centralIcon}>
           <MaterialCommunityIcons name="server-network" size={50} color="#FFFFFF" />
         </View>
-        <Text style={styles.title}>Alerta enviada al Server API</Text>
+        <Text style={styles.title}>Alerta recibida por la Central 168</Text>
         <Text style={styles.subtitle}>
-          La Central 168 recibe datos operativos para priorizar y despachar.
+          Los datos fueron registrados y ya pueden ser atendidos por un operador.
         </Text>
 
         <View style={styles.statusPanel}>
           <View style={styles.liveDot} />
-          <Text style={styles.statusText}>Central conectada por Socket.IO</Text>
+          <Text style={styles.statusText}>Registro confirmado por el backend</Text>
         </View>
 
         <View style={styles.payloadCard}>
@@ -81,7 +95,11 @@ export const ApiCentralScreen = (): ReactElement => {
         <Pressable
           accessibilityRole="button"
           style={({ pressed }) => [styles.nextButton, pressed && styles.pressed]}
-          onPress={() => navigation.navigate('CaseTracking')}
+          onPress={() =>
+            navigation.navigate('CaseTracking', {
+              emergencyUuid: currentEmergency?.uuid,
+            })
+          }
         >
           <Text style={styles.nextText}>Ver seguimiento del caso</Text>
         </Pressable>
