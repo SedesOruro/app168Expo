@@ -2,6 +2,7 @@ import { createApp } from "./app";
 import { Database } from "./config/database";
 import { env } from "./config/env";
 import { ensureSecuritySeed } from "./seeders/securitySeed";
+import { migrarCiudadanosLegado } from "./migrations/migrarCiudadanosLegado";
 
 const start = async (): Promise<void> => {
   const db = Database.getInstance();
@@ -17,6 +18,7 @@ const start = async (): Promise<void> => {
   }
 
   await db.sync();
+  await migrarCiudadanosLegado(db.sequelize);
   await ensureSecuritySeed();
 
   const app = createApp();

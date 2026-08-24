@@ -1,5 +1,5 @@
-import { BaseService } from "../../../../base/BaseService";
-import { Result } from "../../../../base/Result";
+import { BaseService } from "../../../../base/domain/BaseService";
+import { Result } from "../../../../base/types/Result";
 import { RolEntity, RolProps } from "./RolEntity";
 
 export class RolService extends BaseService<RolEntity, RolProps> {

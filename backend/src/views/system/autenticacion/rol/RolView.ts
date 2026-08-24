@@ -1,4 +1,4 @@
-import { Result } from "../../../../base/Result";
+import { Result } from "../../../../base/types/Result";
 import RolService from "../../../../core/system/autenticacion/rol";
 import { findAndCountResult } from "../../../../utils/findAndCountResult";
 

@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
-import { BaseService } from "../../../../base/BaseService";
-import { Result } from "../../../../base/Result";
+import { BaseService } from "../../../../base/domain/BaseService";
+import { Result } from "../../../../base/types/Result";
 import RolService from "../rol";
 import { DeviceInfo, UsuarioEntity, UsuarioProps } from "./UsuarioEntity";
 

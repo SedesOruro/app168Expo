@@ -1,5 +1,5 @@
-import { Entity } from "../../../../base/Entity";
-import { Result } from "../../../../base/Result";
+import { Entity } from "../../../../base/domain/Entity";
+import { Result } from "../../../../base/types/Result";
 
 export type Permiso = {
   read?: boolean;

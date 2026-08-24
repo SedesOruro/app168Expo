@@ -2,7 +2,7 @@ import { Sequelize } from "sequelize";
 import { env } from "./env";
 import { RolSQLModel } from "../core/system/autenticacion/rol/infra/_sql/RolSQLModel";
 import { UsuarioSQLModel } from "../core/system/autenticacion/usuario/infra/_sql/UsuarioSQLModel";
-import { EmergenciasSQLModels } from "../modules/emergencias/models";
+import { EmergenciasSQLModels } from "../core/emergencias/infra/_sql/EmergenciasSQLModels";
 
 export class Database {
   private static instance: Database;

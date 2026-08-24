@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { BaseHttpController } from "../../../../../base/BaseHttpController";
+import { BaseHttpController } from "../../../../../base/infra/BaseHttpController";
 import RolService from "../../../../../core/system/autenticacion/rol";
 import UsuarioService from "../../../../../core/system/autenticacion/usuario";
 import {

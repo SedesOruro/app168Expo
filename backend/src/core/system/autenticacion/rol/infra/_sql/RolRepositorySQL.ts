@@ -1,5 +1,5 @@
-import { BaseSQLRepository } from "../../../../../../base/BaseRepository";
-import { Result } from "../../../../../../base/Result";
+import { BaseSQLRepository } from "../../../../../../base/infra/_sql/BaseSQLRepository";
+import { Result } from "../../../../../../base/types/Result";
 import { RolEntity } from "../../RolEntity";
 import { IRolRepository } from "../IRolRepository";
 import { RolSQLModelData } from "./RolSQLModel";

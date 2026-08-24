@@ -1,4 +1,4 @@
-import { Result } from "../../../../base/Result";
+import { Result } from "../../../../base/types/Result";
 import RolService from "../../../../core/system/autenticacion/rol";
 import { Permiso } from "../../../../core/system/autenticacion/rol/RolEntity";
 import UsuarioService from "../../../../core/system/autenticacion/usuario";

@@ -6,8 +6,8 @@ declare global {
       authId?: string;
       authUser?: UsuarioAutenticado;
       authError?: string;
-      authCitizenId?: number;
-      authCitizenUuid?: string;
+      authCiudadanoId?: number;
+      authCiudadanoUuid?: string;
     }
   }
 }
