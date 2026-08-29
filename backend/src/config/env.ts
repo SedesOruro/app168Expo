@@ -43,6 +43,9 @@ export const env = {
     firstLastName: process.env.SECURITY_SEED_FIRST_LAST_NAME || "Super",
     secondLastName: process.env.SECURITY_SEED_SECOND_LAST_NAME || "Admin",
   },
+  operacionesSeed: {
+    password: process.env.OPERATIONS_SEED_PASSWORD || "Emergencias168",
+  },
   storage: {
     localDir: process.env.STORAGE_LOCAL_DIR || "uploads",
     publicUrl:

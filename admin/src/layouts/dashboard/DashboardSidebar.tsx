@@ -2,6 +2,7 @@ import DarkModeIcon from '@mui/icons-material/DarkMode';
 import LightModeIcon from '@mui/icons-material/LightMode';
 import { Box, Drawer, List, ListItemButton, ListItemIcon, ListItemText, Toolbar, Tooltip, Typography } from '@mui/material';
 import { NavLink, useLocation } from 'react-router';
+import { useModulosPermitidos } from '../../context/AuthContext';
 import { useThemeMode } from '../../theme';
 import { navConfig } from './navConfig';
 
@@ -17,6 +18,8 @@ type Props = {
 export const DashboardSidebar = ({ open, mini, onClose }: Props) => {
     const { pathname } = useLocation();
     const { mode, toggleMode } = useThemeMode();
+    const permiteModulo = useModulosPermitidos();
+    const items = navConfig.filter((item) => permiteModulo(item.id));
     const nextThemeLabel = mode === 'dark' ? 'Tema claro' : 'Tema oscuro';
 
     const content = (
@@ -29,7 +32,7 @@ export const DashboardSidebar = ({ open, mini, onClose }: Props) => {
                 </Typography>
             </Toolbar>
             <List sx={{ px: 1 }}>
-                {navConfig.map((item) => {
+                {items.map((item) => {
                     const active = item.path === '/' ? pathname === '/' : pathname.startsWith(item.path);
                     return (
                         <ListItemButton

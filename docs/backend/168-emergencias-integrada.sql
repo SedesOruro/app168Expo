@@ -4,6 +4,15 @@
 -- 13 tablas operativas: personal, ciudadanos, emergencias y evidencias
 -- Incluye 204 centros de salud RUES del archivo proporcionado
 -- El registro RUES 400280 no trae coordenadas ni estado y se conserva con NULL.
+--
+-- Tablas de cuentas, para evitar confusiones entre nombres parecidos:
+--   `usuario`    -> personal administrativo (superadministrador, administrador,
+--                   operador). PK CHAR(36), se relaciona con `rol`.
+--   `ciudadanos` -> cuentas de la aplicacion movil. PK BIGINT.
+--   `usuarios`   -> OBSOLETA. Nombre anterior de `ciudadanos`. Este script ya no
+--                   la crea y ninguna clave foranea la referencia. Se conserva
+--                   en las bases existentes solo como respaldo del esquema
+--                   antiguo: no escribir ni leer desde el backend.
 -- ============================================================================
 
 SET NAMES utf8mb4;
@@ -87,27 +96,49 @@ ON DUPLICATE KEY UPDATE
   modulos = VALUES(modulos),
   fecha_eliminacion = NULL;
 
--- 1. Cuenta, rol básico y estado de acceso.
-CREATE TABLE IF NOT EXISTS usuarios (
+-- 1. Cuenta de ciudadano de la aplicacion movil: acceso, rol y estado.
+-- El esquema original llamaba `usuarios` a esta tabla. El backend usa
+-- `ciudadanos` para no confundirla con `usuario` (personal administrativo);
+-- mas abajo hay un bloque idempotente que migra las bases creadas con el
+-- nombre anterior.
+-- La tabla `usuarios` queda obsoleta a partir de aqui: no se elimina para no
+-- perder datos en entornos que aun no migraron, pero ninguna clave foranea la
+-- referencia y ningun modelo del backend la mapea. Cualquier cuenta nueva de
+-- ciudadano va exclusivamente en `ciudadanos`.
+CREATE TABLE IF NOT EXISTS ciudadanos (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  uuid CHAR(36) NOT NULL,
+  uuid CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
   email VARCHAR(190) NOT NULL,
   telefono VARCHAR(30) NULL,
   password_hash VARCHAR(255) NOT NULL,
   rol VARCHAR(30) NOT NULL DEFAULT 'CIUDADANO',
-  estado VARCHAR(30) NOT NULL DEFAULT 'PENDIENTE',
-  email_verificado_at DATETIME NULL,
+  estado VARCHAR(30) NOT NULL DEFAULT 'ACTIVO',
   ultimo_acceso_at DATETIME NULL,
-  intentos_fallidos SMALLINT UNSIGNED NOT NULL DEFAULT 0,
-  bloqueado_hasta DATETIME NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   deleted_at DATETIME NULL,
-  UNIQUE KEY uq_usuarios_uuid (uuid),
-  UNIQUE KEY uq_usuarios_email (email),
-  UNIQUE KEY uq_usuarios_telefono (telefono),
-  INDEX idx_usuarios_estado (estado, rol)
+  UNIQUE KEY uq_ciudadanos_uuid (uuid),
+  UNIQUE KEY uq_ciudadanos_email (email),
+  UNIQUE KEY uq_ciudadanos_telefono (telefono),
+  INDEX idx_ciudadanos_estado (estado, rol)
 ) ENGINE=InnoDB;
+
+-- Base creada con el nombre anterior: se copian las cuentas conservando el id
+-- para que las claves foraneas de perfiles, contactos y emergencias sigan siendo validas.
+SET @ddl = IF(
+  EXISTS(
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = DATABASE() AND table_name = 'usuarios'
+  ),
+  'INSERT INTO ciudadanos (id, uuid, email, telefono, password_hash, rol, estado, ultimo_acceso_at, created_at, updated_at, deleted_at)
+     SELECT id, uuid, email, telefono, password_hash, rol, estado, ultimo_acceso_at, created_at, updated_at, deleted_at
+     FROM usuarios WHERE password_hash IS NOT NULL
+     ON DUPLICATE KEY UPDATE email = VALUES(email)',
+  'SELECT 1'
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- 2. Refresh tokens JWT rotativos. Guardar solo el hash del token.
 CREATE TABLE IF NOT EXISTS sesiones_refresh (
@@ -124,7 +155,7 @@ CREATE TABLE IF NOT EXISTS sesiones_refresh (
   UNIQUE KEY uq_sesiones_refresh_jti (jti),
   UNIQUE KEY uq_sesiones_refresh_hash (token_hash),
   INDEX idx_sesiones_refresh_usuario (usuario_id, revocado_at, expira_at),
-  CONSTRAINT fk_sesiones_refresh_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+  CONSTRAINT fk_sesiones_refresh_usuario FOREIGN KEY (usuario_id) REFERENCES ciudadanos(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- 3. Datos personales, médicos y aceptación de términos del registro multipaso.
@@ -153,7 +184,7 @@ CREATE TABLE IF NOT EXISTS perfiles (
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_perfiles_usuario (usuario_id),
   UNIQUE KEY uq_perfiles_ci (cedula_identidad, complemento_ci),
-  CONSTRAINT fk_perfiles_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+  CONSTRAINT fk_perfiles_usuario FOREIGN KEY (usuario_id) REFERENCES ciudadanos(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- 4. Contactos a avisar durante una emergencia.
@@ -169,7 +200,7 @@ CREATE TABLE IF NOT EXISTS contactos_emergencia (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_contactos_usuario (usuario_id, activo, es_principal),
-  CONSTRAINT fk_contactos_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+  CONSTRAINT fk_contactos_usuario FOREIGN KEY (usuario_id) REFERENCES ciudadanos(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- 5. Catálogo RUES completo utilizado para búsquedas por cercanía.
@@ -268,7 +299,7 @@ CREATE TABLE IF NOT EXISTS emergencias (
   INDEX idx_emergencias_usuario (usuario_id, created_at),
   INDEX idx_emergencias_estado (estado_id, gravedad, created_at),
   INDEX idx_emergencias_coordenadas (latitud, longitud),
-  CONSTRAINT fk_emergencias_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_emergencias_usuario FOREIGN KEY (usuario_id) REFERENCES ciudadanos(id) ON DELETE RESTRICT,
   CONSTRAINT fk_emergencias_tipo FOREIGN KEY (tipo_emergencia_id) REFERENCES tipos_emergencia(id) ON DELETE RESTRICT,
   CONSTRAINT fk_emergencias_estado FOREIGN KEY (estado_id) REFERENCES estados_emergencia(id) ON DELETE RESTRICT,
   CONSTRAINT fk_emergencias_centro FOREIGN KEY (centro_salud_sugerido_id) REFERENCES centros_salud(id) ON DELETE SET NULL,
@@ -350,7 +381,7 @@ CREATE TABLE IF NOT EXISTS historial_emergencia (
   CONSTRAINT fk_historial_emergencia FOREIGN KEY (emergencia_id) REFERENCES emergencias(id) ON DELETE CASCADE,
   CONSTRAINT fk_historial_estado_anterior FOREIGN KEY (estado_anterior_id) REFERENCES estados_emergencia(id) ON DELETE SET NULL,
   CONSTRAINT fk_historial_estado_nuevo FOREIGN KEY (estado_nuevo_id) REFERENCES estados_emergencia(id) ON DELETE RESTRICT,
-  CONSTRAINT fk_historial_actor FOREIGN KEY (actor_usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+  CONSTRAINT fk_historial_actor FOREIGN KEY (actor_usuario_id) REFERENCES ciudadanos(id) ON DELETE SET NULL,
   CONSTRAINT fk_historial_actor_admin FOREIGN KEY (actor_admin_id) REFERENCES usuario(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
@@ -397,6 +428,155 @@ CREATE TABLE IF NOT EXISTS evidencias_emergencia (
     (tipo IN ('FOTO','AUDIO') AND archivo_url IS NOT NULL)
   )
 ) ENGINE=InnoDB;
+
+-- Repunte idempotente de las cuentas de ciudadano. Las bases creadas con el
+-- esquema anterior mantienen estas claves foraneas apuntando a `usuarios`, lo
+-- que impedia registrar perfiles, contactos y emergencias de cuentas nuevas.
+
+SET @ddl = IF(
+  EXISTS(
+    SELECT 1 FROM information_schema.referential_constraints
+    WHERE constraint_schema = DATABASE()
+      AND table_name = 'perfiles'
+      AND constraint_name = 'fk_perfiles_usuario'
+      AND referenced_table_name = 'usuarios'
+  ),
+  'ALTER TABLE perfiles DROP FOREIGN KEY fk_perfiles_usuario',
+  'SELECT 1'
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF(
+  EXISTS(
+    SELECT 1 FROM information_schema.referential_constraints
+    WHERE constraint_schema = DATABASE()
+      AND table_name = 'perfiles'
+      AND constraint_name = 'fk_perfiles_usuario'
+  ),
+  'SELECT 1',
+  'ALTER TABLE perfiles ADD CONSTRAINT fk_perfiles_usuario FOREIGN KEY (usuario_id) REFERENCES ciudadanos(id) ON DELETE CASCADE'
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF(
+  EXISTS(
+    SELECT 1 FROM information_schema.referential_constraints
+    WHERE constraint_schema = DATABASE()
+      AND table_name = 'contactos_emergencia'
+      AND constraint_name = 'fk_contactos_usuario'
+      AND referenced_table_name = 'usuarios'
+  ),
+  'ALTER TABLE contactos_emergencia DROP FOREIGN KEY fk_contactos_usuario',
+  'SELECT 1'
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF(
+  EXISTS(
+    SELECT 1 FROM information_schema.referential_constraints
+    WHERE constraint_schema = DATABASE()
+      AND table_name = 'contactos_emergencia'
+      AND constraint_name = 'fk_contactos_usuario'
+  ),
+  'SELECT 1',
+  'ALTER TABLE contactos_emergencia ADD CONSTRAINT fk_contactos_usuario FOREIGN KEY (usuario_id) REFERENCES ciudadanos(id) ON DELETE CASCADE'
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF(
+  EXISTS(
+    SELECT 1 FROM information_schema.referential_constraints
+    WHERE constraint_schema = DATABASE()
+      AND table_name = 'sesiones_refresh'
+      AND constraint_name = 'fk_sesiones_refresh_usuario'
+      AND referenced_table_name = 'usuarios'
+  ),
+  'ALTER TABLE sesiones_refresh DROP FOREIGN KEY fk_sesiones_refresh_usuario',
+  'SELECT 1'
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF(
+  EXISTS(
+    SELECT 1 FROM information_schema.referential_constraints
+    WHERE constraint_schema = DATABASE()
+      AND table_name = 'sesiones_refresh'
+      AND constraint_name = 'fk_sesiones_refresh_usuario'
+  ),
+  'SELECT 1',
+  'ALTER TABLE sesiones_refresh ADD CONSTRAINT fk_sesiones_refresh_usuario FOREIGN KEY (usuario_id) REFERENCES ciudadanos(id) ON DELETE CASCADE'
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF(
+  EXISTS(
+    SELECT 1 FROM information_schema.referential_constraints
+    WHERE constraint_schema = DATABASE()
+      AND table_name = 'emergencias'
+      AND constraint_name = 'fk_emergencias_usuario'
+      AND referenced_table_name = 'usuarios'
+  ),
+  'ALTER TABLE emergencias DROP FOREIGN KEY fk_emergencias_usuario',
+  'SELECT 1'
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF(
+  EXISTS(
+    SELECT 1 FROM information_schema.referential_constraints
+    WHERE constraint_schema = DATABASE()
+      AND table_name = 'emergencias'
+      AND constraint_name = 'fk_emergencias_usuario'
+  ),
+  'SELECT 1',
+  'ALTER TABLE emergencias ADD CONSTRAINT fk_emergencias_usuario FOREIGN KEY (usuario_id) REFERENCES ciudadanos(id) ON DELETE RESTRICT'
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF(
+  EXISTS(
+    SELECT 1 FROM information_schema.referential_constraints
+    WHERE constraint_schema = DATABASE()
+      AND table_name = 'historial_emergencia'
+      AND constraint_name = 'fk_historial_actor'
+      AND referenced_table_name = 'usuarios'
+  ),
+  'ALTER TABLE historial_emergencia DROP FOREIGN KEY fk_historial_actor',
+  'SELECT 1'
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF(
+  EXISTS(
+    SELECT 1 FROM information_schema.referential_constraints
+    WHERE constraint_schema = DATABASE()
+      AND table_name = 'historial_emergencia'
+      AND constraint_name = 'fk_historial_actor'
+  ),
+  'SELECT 1',
+  'ALTER TABLE historial_emergencia ADD CONSTRAINT fk_historial_actor FOREIGN KEY (actor_usuario_id) REFERENCES ciudadanos(id) ON DELETE SET NULL'
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 INSERT INTO tipos_emergencia (codigo, nombre, descripcion, icono, color_hex, orden) VALUES
   ('MEDICA', 'Emergencia médica', 'Lesión, enfermedad súbita o riesgo vital', 'medical-bag', '#D32F2F', 10),
