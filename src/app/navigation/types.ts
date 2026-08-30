@@ -25,12 +25,6 @@ export type MainStackParamList = {
   History: undefined;
 };
 
-export type MainDrawerParamList = MainStackParamList & {
-  ComponentsShowcase: undefined;
-  LayoutShowcase: undefined;
-  ThemeShowcase: undefined;
-};
-
 export type RootStackParamList = {
   MainStack: NavigatorScreenParams<MainStackParamList>;
 };

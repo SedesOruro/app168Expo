@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { Database } from "../config/database";
+import CiudadanoService from "../core/emergencias/ciudadano";
 import { verifyToken } from "../utils/jwt";
 
 const bearerToken = (req: Request): string | null => {
@@ -21,13 +21,13 @@ export const checkIfCiudadanoAuthenticated = async (
       return res.status(401).json({ error: "Token de ciudadano requerido" });
     }
 
-    const ciudadano = await Database.getInstance().models.ciudadano.findOne({
-      where: { uuid: payload.uid, estado: "ACTIVO" },
-    });
-    if (!ciudadano) return res.status(401).json({ error: "Cuenta no disponible" });
+    const cuenta = await CiudadanoService.buscarActivoPorUuid(payload.uid);
+    if (cuenta.isFailure || !cuenta.getValue())
+      return res.status(401).json({ error: "Cuenta no disponible" });
 
-    req.authCiudadanoId = Number(ciudadano.id);
-    req.authCiudadanoUuid = String(ciudadano.uuid);
+    const ciudadano = cuenta.getValue()!;
+    req.authCiudadanoId = ciudadano.id;
+    req.authCiudadanoUuid = ciudadano.uuid;
     return next();
   } catch (error) {
     return res.status(401).json({ error: String((error as Error).message) });

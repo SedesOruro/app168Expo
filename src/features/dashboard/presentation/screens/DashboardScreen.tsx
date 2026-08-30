@@ -1,3 +1,4 @@
+import { institucion } from '../../../../shared/constants/institucion';
 import React, { ReactElement } from 'react';
 import {
   Pressable,
@@ -56,7 +57,9 @@ export const DashboardScreen = (): ReactElement => {
         </View>
 
         <Text style={styles.title}>Centro de emergencias 168</Text>
-        <Text style={styles.subtitle}>Pedir ayuda en maximo 2 taps.</Text>
+        <Text style={styles.subtitle}>
+          Pedir ayuda en maximo 2 taps. Atiende {institucion.sigla}.
+        </Text>
 
         <View style={styles.flowWrap}>
           <EmergencyFlowSteps activeStep={1} />

@@ -1,7 +1,11 @@
 import { BaseSQLRepository } from "../../../../../../base/infra/_sql/BaseSQLRepository";
 import { Result } from "../../../../../../base/types/Result";
 import { UsuarioEntity } from "../../UsuarioEntity";
-import { IUsuarioRepository } from "../IUsuarioRepository";
+import { Database } from "../../../../../../config/database";
+import {
+  IUsuarioRepository,
+  OperadorDisponible,
+} from "../IUsuarioRepository";
 import { UsuarioSQLModelData } from "./UsuarioSQLModel";
 
 export class UsuarioRepositorySQL
@@ -60,5 +64,25 @@ export class UsuarioRepositorySQL
       fid_role: entity.props.rolId,
       devices: entity.props.devices,
     };
+  }
+
+  async listarOperadoresActivos(): Promise<Result<OperadorDisponible[]>> {
+    const filas = await this.model.findAll({
+      where: { activo: true },
+      include: [
+        {
+          model: Database.getInstance().models.rol,
+          as: "rol",
+          where: { tipo: "operador" },
+        },
+      ],
+      attributes: ["id", "fullname", "nombre", "celular"],
+    });
+    return Result.ok(filas);
+  }
+
+  async estaActivo(id: string): Promise<Result<boolean>> {
+    const fila = await this.model.findByPk(id);
+    return Result.ok(Boolean(fila && fila.activo));
   }
 }

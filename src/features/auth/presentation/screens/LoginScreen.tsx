@@ -1,3 +1,4 @@
+import { institucion } from '../../../../shared/constants/institucion';
 import React, { ReactElement, useState } from 'react';
 import { Alert } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -57,7 +58,7 @@ export const LoginScreen = (): ReactElement => {
   return (
     <AuthLayout
       title="EMERGENCIAS 168"
-      subtitle="Ingrese con su cuenta para solicitar y seguir asistencia."
+      subtitle={`Servicio de ${institucion.sigla}. Ingrese con su cuenta para solicitar y seguir asistencia.`}
     >
       <Form>
         <TextInput

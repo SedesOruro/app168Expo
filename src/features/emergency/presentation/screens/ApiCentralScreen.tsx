@@ -1,3 +1,4 @@
+import { servicio } from '../../../../shared/constants/institucion';
 import React, { ReactElement } from 'react';
 import {
   Pressable,
@@ -59,7 +60,7 @@ export const ApiCentralScreen = (): ReactElement => {
         >
           <MaterialCommunityIcons name="arrow-left" size={32} color="#FFFFFF" />
         </Pressable>
-        <Text style={styles.headerTitle}>API / Central 168</Text>
+        <Text style={styles.headerTitle}>{servicio.central}</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -75,7 +76,7 @@ export const ApiCentralScreen = (): ReactElement => {
 
         <View style={styles.statusPanel}>
           <View style={styles.liveDot} />
-          <Text style={styles.statusText}>Registro confirmado por el backend</Text>
+          <Text style={styles.statusText}>Registro confirmado por {servicio.central}</Text>
         </View>
 
         <View style={styles.payloadCard}>

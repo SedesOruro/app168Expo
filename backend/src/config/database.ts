@@ -2,7 +2,17 @@ import { Sequelize } from "sequelize";
 import { env } from "./env";
 import { RolSQLModel } from "../core/system/autenticacion/rol/infra/_sql/RolSQLModel";
 import { UsuarioSQLModel } from "../core/system/autenticacion/usuario/infra/_sql/UsuarioSQLModel";
-import { EmergenciasSQLModels } from "../core/emergencias/infra/_sql/EmergenciasSQLModels";
+import { CiudadanoSQLModel } from "../core/emergencias/ciudadano/infra/_sql/CiudadanoSQLModel";
+import { SesionRefreshSQLModel } from "../core/emergencias/sesion_refresh/infra/_sql/SesionRefreshSQLModel";
+import { PerfilSQLModel } from "../core/emergencias/perfil/infra/_sql/PerfilSQLModel";
+import { ContactoEmergenciaSQLModel } from "../core/emergencias/contacto_emergencia/infra/_sql/ContactoEmergenciaSQLModel";
+import { CentroSaludSQLModel } from "../core/emergencias/centro_salud/infra/_sql/CentroSaludSQLModel";
+import { TipoEmergenciaSQLModel } from "../core/emergencias/tipo_emergencia/infra/_sql/TipoEmergenciaSQLModel";
+import { EstadoEmergenciaSQLModel } from "../core/emergencias/estado_emergencia/infra/_sql/EstadoEmergenciaSQLModel";
+import { EmergenciaSQLModel } from "../core/emergencias/emergencia/infra/_sql/EmergenciaSQLModel";
+import { RespuestaTriageSQLModel } from "../core/emergencias/respuesta_triage/infra/_sql/RespuestaTriageSQLModel";
+import { HistorialEmergenciaSQLModel } from "../core/emergencias/historial_emergencia/infra/_sql/HistorialEmergenciaSQLModel";
+import { EvidenciaEmergenciaSQLModel } from "../core/emergencias/evidencia_emergencia/infra/_sql/EvidenciaEmergenciaSQLModel";
 
 export class Database {
   private static instance: Database;
@@ -46,17 +56,24 @@ export class Database {
     );
 
     console.log("[database] cargando modelos...");
+    // Cada agregado define su propio modelo en infra/_sql. Las relaciones
+    // cruzadas no se declaran aqui: cada modelo expone `associate(models)` y
+    // recibe el registro completo mas abajo, evitando importaciones circulares.
     this.models = {
       rol: RolSQLModel.define(this.sequelizeInstance, Sequelize),
       usuario: UsuarioSQLModel.define(this.sequelizeInstance, Sequelize),
-      ...EmergenciasSQLModels.define(this.sequelizeInstance, Sequelize),
+      ciudadano: CiudadanoSQLModel.define(this.sequelizeInstance, Sequelize),
+      sesionRefresh: SesionRefreshSQLModel.define(this.sequelizeInstance, Sequelize),
+      perfil: PerfilSQLModel.define(this.sequelizeInstance, Sequelize),
+      contactoEmergencia: ContactoEmergenciaSQLModel.define(this.sequelizeInstance, Sequelize),
+      centroSalud: CentroSaludSQLModel.define(this.sequelizeInstance, Sequelize),
+      tipoEmergencia: TipoEmergenciaSQLModel.define(this.sequelizeInstance, Sequelize),
+      estadoEmergencia: EstadoEmergenciaSQLModel.define(this.sequelizeInstance, Sequelize),
+      emergencia: EmergenciaSQLModel.define(this.sequelizeInstance, Sequelize),
+      respuestaTriage: RespuestaTriageSQLModel.define(this.sequelizeInstance, Sequelize),
+      historialEmergencia: HistorialEmergenciaSQLModel.define(this.sequelizeInstance, Sequelize),
+      evidenciaEmergencia: EvidenciaEmergenciaSQLModel.define(this.sequelizeInstance, Sequelize),
     };
-
-    this.models.emergencia.belongsTo(this.models.usuario, {
-      as: "operador",
-      foreignKey: "operador_id",
-      constraints: false,
-    });
 
     console.log("[database] asociando modelos...");
     Object.keys(this.models).forEach((key) => {

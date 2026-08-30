@@ -81,7 +81,7 @@ INSERT INTO rol (id, nombre, tipo, permisos, modulos) VALUES
     'Administrador',
     'administrador',
     '{"read":true,"create":true,"edit":true,"remove":true}',
-    '[{"id":"emergencias","name":"emergencias","path":"/emergencias","title":"Emergencias"},{"id":"ciudadanos","name":"ciudadanos","path":"/ciudadanos","title":"Ciudadanos"},{"id":"centros-salud","name":"centros-salud","path":"/centros-salud","title":"Centros de salud"}]'
+    '[{"id":"emergencias","name":"emergencias","path":"/emergencias","title":"Emergencias"},{"id":"ciudadanos","name":"ciudadanos","path":"/ciudadanos","title":"Ciudadanos"},{"id":"centros-salud","name":"centros-salud","path":"/centros-salud","title":"Centros de salud"},{"id":"usuarios","name":"usuarios","path":"/usuarios","title":"Usuarios"},{"id":"roles","name":"roles","path":"/roles","title":"Roles"}]'
   ),
   (
     '00000000-0000-0000-0000-000000000003',

@@ -4,6 +4,7 @@ import { env } from "./config/env";
 import { ensureSecuritySeed } from "./seeders/securitySeed";
 import { migrarCiudadanosLegado } from "./migrations/migrarCiudadanosLegado";
 import { repuntarClavesForaneasCiudadanos } from "./migrations/repuntarClavesForaneasCiudadanos";
+import { habilitarModulosAdministrador } from "./migrations/habilitarModulosAdministrador";
 
 const start = async (): Promise<void> => {
   const db = Database.getInstance();
@@ -21,6 +22,7 @@ const start = async (): Promise<void> => {
   await db.sync();
   await migrarCiudadanosLegado(db.sequelize);
   await repuntarClavesForaneasCiudadanos(db.sequelize);
+  await habilitarModulosAdministrador(db.sequelize);
   await ensureSecuritySeed();
 
   const app = createApp();

@@ -1,3 +1,4 @@
+import { institucion } from '../../../../shared/constants/institucion';
 import React, { ReactElement, useState } from 'react';
 import {
   Pressable,
@@ -161,6 +162,13 @@ export const InformationScreen = (): ReactElement => {
           </Pressable>
           );
         })}
+
+        <View style={styles.institucion}>
+          <Text style={styles.institucionNombre}>{institucion.nombreCompleto}</Text>
+          <Text style={styles.institucionLinea}>{institucion.entidadSuperior}</Text>
+          <Text style={styles.institucionLinea}>{institucion.rectoria}</Text>
+          <Text style={styles.institucionSitio}>{institucion.sitioWeb}</Text>
+        </View>
       </ScrollView>
       <BottomTabBar active="Information" navigation={navigation} />
     </SafeAreaView>
@@ -168,6 +176,31 @@ export const InformationScreen = (): ReactElement => {
 };
 
 const styles = StyleSheet.create({
+  institucion: {
+    marginTop: 24,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E4E9EC',
+    alignItems: 'center',
+    gap: 2,
+  },
+  institucionNombre: {
+    color: '#2F2F2F',
+    fontSize: 12,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  institucionLinea: {
+    color: '#6B7C86',
+    fontSize: 10,
+    textAlign: 'center',
+  },
+  institucionSitio: {
+    marginTop: 4,
+    color: '#0AA7A5',
+    fontSize: 10,
+    fontWeight: '700',
+  },
   screen: {
     flex: 1,
     backgroundColor: '#FFFFFF',

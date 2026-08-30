@@ -1,5 +1,9 @@
 import bcrypt from "bcryptjs";
 import { BaseService } from "../../../../base/domain/BaseService";
+import {
+  IUsuarioRepository,
+  OperadorDisponible,
+} from "./infra/IUsuarioRepository";
 import { Result } from "../../../../base/types/Result";
 import RolService from "../rol";
 import { DeviceInfo, UsuarioEntity, UsuarioProps } from "./UsuarioEntity";
@@ -26,6 +30,18 @@ export type EditaUsuarioParams = Partial<CreaUsuarioParams> & {
 };
 
 export class UsuarioService extends BaseService<UsuarioEntity, UsuarioProps> {
+  private get usuarioRepo(): IUsuarioRepository {
+    return this.repo as IUsuarioRepository;
+  }
+
+  listarOperadoresActivos(): Promise<Result<OperadorDisponible[]>> {
+    return this.usuarioRepo.listarOperadoresActivos();
+  }
+
+  operadorDisponible(id: string): Promise<Result<boolean>> {
+    return this.usuarioRepo.estaActivo(id);
+  }
+
   async factory(
     props: UsuarioProps,
     id?: string,
