@@ -10,11 +10,13 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from 'styled-components/native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import type { MainStackParamList } from '../../../../app/navigation/types';
+import type { AppTheme } from '../../../../shared/theme';
 import { EmergencyFlowSteps } from '../components/EmergencyFlowSteps';
 import { emergencyApi } from '../../data/EmergencyApi';
 import { getCurrentCoordinates } from '../../data/locationService';
@@ -26,9 +28,10 @@ type EmergencyNavigation = NativeStackNavigationProp<
 >;
 type EmergencyRoute = RouteProp<MainStackParamList, 'Emergency'>;
 
-const RED = '#F63F5F';
 
 export const EmergencyScreen = (): ReactElement => {
+  const tema = useTheme() as AppTheme;
+  const estilos = crearEstilos(tema);
   const navigation = useNavigation<EmergencyNavigation>();
   const route = useRoute<EmergencyRoute>();
   const { draft, updateDraft, setCurrentEmergency } = useEmergencyFlow();
@@ -109,43 +112,43 @@ export const EmergencyScreen = (): ReactElement => {
   };
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar barStyle="light-content" backgroundColor={RED} />
-      <View style={styles.header}>
+    <SafeAreaView style={estilos.screen}>
+      <StatusBar barStyle={tema.isDark ? 'light-content' : 'dark-content'} backgroundColor={tema.colors.accentText} />
+      <View style={estilos.header}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Volver"
-          style={styles.backButton}
+          style={estilos.backButton}
           onPress={() => navigation.goBack()}
         >
-          <MaterialCommunityIcons name="arrow-left" size={32} color="#FFFFFF" />
+          <MaterialCommunityIcons name="arrow-left" size={32} color={tema.colors.onFill} />
         </Pressable>
-        <Text style={styles.headerTitle}>
+        <Text style={estilos.headerTitle}>
           {isDirectFlow ? 'Confirmar alerta 168' : 'Confirmar emergencia'}
         </Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={estilos.content}>
         <EmergencyFlowSteps activeStep={2} labels={flowLabels} />
 
         {isDirectFlow ? (
-          <View style={styles.fastNotice}>
-            <MaterialCommunityIcons name="flash" size={24} color={RED} />
-            <Text style={styles.fastNoticeText}>
+          <View style={estilos.fastNotice}>
+            <MaterialCommunityIcons name="flash" size={24} color={tema.colors.accentText} />
+            <Text style={estilos.fastNoticeText}>
               Flujo rapido: con esta confirmacion se envia ubicacion, perfil y
               disponibilidad para hablar a la Central 168.
             </Text>
           </View>
         ) : null}
 
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Tipo</Text>
-            <Text style={styles.summaryValue}>{emergencyLabel}</Text>
+        <View style={estilos.summaryCard}>
+          <View style={estilos.summaryRow}>
+            <Text style={estilos.summaryLabel}>Tipo</Text>
+            <Text style={estilos.summaryValue}>{emergencyLabel}</Text>
           </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Ubicacion</Text>
-            <Text style={styles.summaryValue}>
+          <View style={estilos.summaryRow}>
+            <Text style={estilos.summaryLabel}>Ubicacion</Text>
+            <Text style={estilos.summaryValue}>
               {locating
                 ? 'Detectando...'
                 : draft.location
@@ -153,14 +156,14 @@ export const EmergencyScreen = (): ReactElement => {
                   : 'No disponible'}
             </Text>
           </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Modo</Text>
-            <Text style={styles.summaryValue}>{canSpeak ? 'Puede hablar' : 'Silencioso'}</Text>
+          <View style={estilos.summaryRow}>
+            <Text style={estilos.summaryLabel}>Modo</Text>
+            <Text style={estilos.summaryValue}>{canSpeak ? 'Puede hablar' : 'Silencioso'}</Text>
           </View>
         </View>
 
-        <Text style={styles.question}>Puedes hablar?</Text>
-        <View style={styles.choiceRow}>
+        <Text style={estilos.question}>Puedes hablar?</Text>
+        <View style={estilos.choiceRow}>
           {[true, false].map(value => {
             const isActive = value === canSpeak;
             const label = value ? 'Si' : 'No';
@@ -169,15 +172,15 @@ export const EmergencyScreen = (): ReactElement => {
               <Pressable
                 key={label}
                 accessibilityRole="button"
-                style={[styles.choiceButton, isActive && styles.choiceButtonActive]}
+                style={[estilos.choiceButton, isActive && estilos.choiceButtonActive]}
                 onPress={() => setCanSpeak(value)}
               >
                 <MaterialCommunityIcons
                   name={value ? 'microphone' : 'microphone-off'}
                   size={26}
-                  color={isActive ? '#FFFFFF' : RED}
+                  color={isActive ? tema.colors.onFill : tema.colors.accentText}
                 />
-                <Text style={[styles.choiceText, isActive && styles.choiceTextActive]}>
+                <Text style={[estilos.choiceText, isActive && estilos.choiceTextActive]}>
                   {label}
                 </Text>
               </Pressable>
@@ -186,9 +189,9 @@ export const EmergencyScreen = (): ReactElement => {
         </View>
 
         {!canSpeak ? (
-          <View style={styles.silentMode}>
-            <MaterialCommunityIcons name="volume-off" size={24} color="#8A5A00" />
-            <Text style={styles.silentText}>
+          <View style={estilos.silentMode}>
+            <MaterialCommunityIcons name="volume-off" size={24} color={tema.colors.warningText} />
+            <Text style={estilos.silentText}>
               Se enviara como modo silencioso para que el operador priorice chat,
               datos y ubicacion.
             </Text>
@@ -198,13 +201,13 @@ export const EmergencyScreen = (): ReactElement => {
         <Pressable
           accessibilityRole="button"
           disabled={locating || submitting}
-          style={({ pressed }) => [styles.sendButton, pressed && styles.pressed]}
+          style={({ pressed }) => [estilos.sendButton, pressed && estilos.pressed]}
           onPress={onConfirm}
         >
           {submitting || locating ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={tema.colors.onFill} />
           ) : (
-            <Text style={styles.sendButtonText}>
+            <Text style={estilos.sendButtonText}>
               {isDirectFlow ? 'ENVIAR ALERTA 168' : 'CONFIRMAR Y CLASIFICAR'}
             </Text>
           )}
@@ -212,24 +215,25 @@ export const EmergencyScreen = (): ReactElement => {
 
         <Pressable
           accessibilityRole="button"
-          style={styles.cancelButton}
+          style={estilos.cancelButton}
           onPress={() => navigation.goBack()}
         >
-          <Text style={styles.cancelText}>Cancelar</Text>
+          <Text style={estilos.cancelText}>Cancelar</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
+const crearEstilos = (tema: AppTheme) =>
+  StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: tema.colors.surface,
   },
   header: {
     height: 64,
-    backgroundColor: RED,
+    backgroundColor: tema.colors.accentFill,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -244,10 +248,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    color: '#FFFFFF',
+    color: tema.colors.onFill,
     fontSize: 21,
     lineHeight: 26,
-    fontWeight: '800',
+    fontFamily: tema.fuentes.bold,
   },
   content: {
     paddingHorizontal: 26,
@@ -257,25 +261,25 @@ const styles = StyleSheet.create({
   fastNotice: {
     marginBottom: 18,
     borderRadius: 8,
-    backgroundColor: '#FFE8EC',
+    backgroundColor: tema.colors.dangerSoft,
     borderWidth: 1,
-    borderColor: '#FFC4CF',
+    borderColor: tema.colors.dangerSoft,
     padding: 14,
     flexDirection: 'row',
     gap: 10,
   },
   fastNoticeText: {
     flex: 1,
-    color: '#6A2431',
+    color: tema.colors.dangerText,
     fontSize: 14,
     lineHeight: 19,
-    fontWeight: '800',
+    fontFamily: tema.fuentes.bold,
   },
   summaryCard: {
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E2E2E2',
-    backgroundColor: '#FAFAFA',
+    borderColor: tema.colors.border,
+    backgroundColor: tema.colors.background,
     paddingHorizontal: 20,
     paddingVertical: 10,
   },
@@ -285,25 +289,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: 1,
-    borderBottomColor: '#ECECEC',
+    borderBottomColor: tema.colors.border,
   },
   summaryLabel: {
-    color: '#6A6A6A',
+    color: tema.colors.textMuted,
     fontSize: 16,
     lineHeight: 21,
   },
   summaryValue: {
-    color: '#2F2F2F',
+    color: tema.colors.text,
     fontSize: 17,
     lineHeight: 22,
-    fontWeight: '900',
+    fontFamily: tema.fuentes.bold,
   },
   question: {
     marginTop: 42,
-    color: '#303030',
+    color: tema.colors.text,
     fontSize: 28,
     lineHeight: 34,
-    fontWeight: '900',
+    fontFamily: tema.fuentes.bold,
     textAlign: 'center',
   },
   choiceRow: {
@@ -316,46 +320,46 @@ const styles = StyleSheet.create({
     minHeight: 76,
     borderRadius: 8,
     borderWidth: 1.4,
-    borderColor: RED,
+    borderColor: tema.colors.accentText,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
     gap: 8,
   },
   choiceButtonActive: {
-    backgroundColor: RED,
+    backgroundColor: tema.colors.accentFill,
   },
   choiceText: {
-    color: RED,
+    color: tema.colors.accentText,
     fontSize: 22,
     lineHeight: 28,
-    fontWeight: '900',
+    fontFamily: tema.fuentes.bold,
   },
   choiceTextActive: {
-    color: '#FFFFFF',
+    color: tema.colors.onFill,
   },
   silentMode: {
     marginTop: 20,
     borderRadius: 8,
-    backgroundColor: '#FFF5D8',
+    backgroundColor: tema.colors.warningSoft,
     borderWidth: 1,
-    borderColor: '#F0D68A',
+    borderColor: tema.colors.warningSoft,
     padding: 16,
     flexDirection: 'row',
     gap: 10,
   },
   silentText: {
     flex: 1,
-    color: '#6F4B00',
+    color: tema.colors.warningText,
     fontSize: 15,
     lineHeight: 20,
-    fontWeight: '700',
+    fontFamily: tema.fuentes.semiBold,
   },
   sendButton: {
     marginTop: 34,
     minHeight: 68,
     borderRadius: 8,
-    backgroundColor: RED,
+    backgroundColor: tema.colors.accentFill,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 6,
@@ -364,10 +368,10 @@ const styles = StyleSheet.create({
     opacity: 0.86,
   },
   sendButtonText: {
-    color: '#FFFFFF',
+    color: tema.colors.onFill,
     fontSize: 20,
     lineHeight: 25,
-    fontWeight: '900',
+    fontFamily: tema.fuentes.bold,
   },
   cancelButton: {
     minHeight: 58,
@@ -375,9 +379,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cancelText: {
-    color: '#555555',
+    color: tema.colors.textMuted,
     fontSize: 18,
     lineHeight: 24,
-    fontWeight: '700',
+    fontFamily: tema.fuentes.semiBold,
   },
 });

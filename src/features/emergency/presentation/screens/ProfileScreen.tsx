@@ -9,21 +9,35 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from 'styled-components/native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 
 import type { MainStackParamList } from '../../../../app/navigation/types';
+import type { AppTheme } from '../../../../shared/theme';
+import {
+  useTemaApp,
+  type PreferenciaTema,
+} from '../../../../app/providers/ThemeProvider';
 import { BottomTabBar } from '../components/BottomTabBar';
 import { emergencyApi } from '../../data/EmergencyApi';
 
 type ProfileNavigation = NativeStackNavigationProp<MainStackParamList, 'Profile'>;
 
-const RED = '#F63F5F';
+
+const opcionesApariencia: { valor: PreferenciaTema; etiqueta: string }[] = [
+  { valor: 'claro', etiqueta: 'Claro' },
+  { valor: 'oscuro', etiqueta: 'Oscuro' },
+  { valor: 'sistema', etiqueta: 'Sistema' },
+];
 
 export const ProfileScreen = (): ReactElement => {
+  const tema = useTheme() as AppTheme;
+  const estilos = crearEstilos(tema);
   const navigation = useNavigation<ProfileNavigation>();
+  const { preferencia, cambiarPreferencia } = useTemaApp();
   const query = useQuery({ queryKey: ['emergency-profile'], queryFn: emergencyApi.getProfile });
   const data = query.data;
   const contact = data?.contacts?.[0];
@@ -48,46 +62,122 @@ export const ProfileScreen = (): ReactElement => {
   ] as const;
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Mi perfil de emergencia</Text>
-        <Text style={styles.subtitle}>
+    <SafeAreaView style={estilos.screen}>
+      <StatusBar barStyle={tema.isDark ? 'light-content' : 'dark-content'} backgroundColor={tema.colors.surface} />
+      <ScrollView contentContainerStyle={estilos.content}>
+        <Text style={estilos.title}>Mi perfil de emergencia</Text>
+        <Text style={estilos.subtitle}>
           Datos guardados una sola vez para ayudar al operador.
         </Text>
 
-        {query.isLoading ? <ActivityIndicator size="large" color={RED} /> : null}
-        <View style={styles.card}>
+        {query.isLoading ? <ActivityIndicator size="large" color={tema.colors.accentText} /> : null}
+        <View style={estilos.card}>
           {profileRows.map((item, index) => (
-            <View key={item.label} style={styles.dataRow}>
-              <MaterialCommunityIcons name={item.icon} size={27} color={RED} />
-              <View style={styles.rowCopy}>
-                <Text style={styles.rowLabel}>{item.label}</Text>
-                <Text style={styles.dataText}>{item.value}</Text>
+            <View key={item.label} style={estilos.dataRow}>
+              <MaterialCommunityIcons name={item.icon} size={27} color={tema.colors.accentText} />
+              <View style={estilos.rowCopy}>
+                <Text style={estilos.rowLabel}>{item.label}</Text>
+                <Text style={estilos.dataText}>{item.value}</Text>
               </View>
-              {index < profileRows.length - 1 && <View style={styles.rowDivider} />}
+              {index < profileRows.length - 1 && <View style={estilos.rowDivider} />}
             </View>
           ))}
+        </View>
+
+        {/*
+          El modo oscuro es opcional: la aplicacion arranca en claro y solo cambia
+          si se elige aqui. "Sistema" lo deja seguir al ajuste del telefono.
+        */}
+        <View style={estilos.aparienciaBloque}>
+          <Text style={estilos.aparienciaTitulo}>Apariencia</Text>
+          <View style={estilos.aparienciaFila}>
+            {opcionesApariencia.map(opcion => {
+              const activa = opcion.valor === preferencia;
+
+              return (
+                <Pressable
+                  key={opcion.valor}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Apariencia ${opcion.etiqueta}`}
+                  accessibilityState={{ selected: activa }}
+                  style={[
+                    estilos.aparienciaOpcion,
+                    activa && estilos.aparienciaOpcionActiva,
+                  ]}
+                  onPress={() => {
+                    cambiarPreferencia(opcion.valor).catch(() => undefined);
+                  }}
+                >
+                  <Text
+                    style={[
+                      estilos.aparienciaTexto,
+                      activa && estilos.aparienciaTextoActivo,
+                    ]}
+                  >
+                    {opcion.etiqueta}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
       </ScrollView>
 
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Editar perfil de emergencia"
-        style={styles.editButton}
+        style={estilos.editButton}
         onPress={() => navigation.navigate('ProfileEdit')}
       >
-        <MaterialCommunityIcons name="content-save-edit" size={30} color="#FFFFFF" />
+        <MaterialCommunityIcons name="content-save-edit" size={30} color={tema.colors.onFill} />
       </Pressable>
       <BottomTabBar active="Profile" navigation={navigation} />
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
+const crearEstilos = (tema: AppTheme) =>
+  StyleSheet.create({
+  aparienciaBloque: {
+    marginTop: 20,
+    gap: 10,
+  },
+  aparienciaTitulo: {
+    color: tema.colors.text,
+    fontSize: 18,
+    lineHeight: 24,
+    fontFamily: tema.fuentes.bold,
+  },
+  aparienciaFila: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  aparienciaOpcion: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 24,
+    borderWidth: 1.2,
+    borderColor: tema.colors.border,
+    backgroundColor: tema.colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  aparienciaOpcionActiva: {
+    borderColor: tema.colors.accentFill,
+    backgroundColor: tema.colors.accentFill,
+  },
+  aparienciaTexto: {
+    color: tema.colors.text,
+    fontSize: 15,
+    lineHeight: 20,
+    fontFamily: tema.fuentes.bold,
+  },
+  aparienciaTextoActivo: {
+    color: tema.colors.onFill,
+  },
   screen: {
     flex: 1,
-    backgroundColor: '#F4F4F4',
+    backgroundColor: tema.colors.background,
   },
   content: {
     paddingHorizontal: 24,
@@ -95,29 +185,29 @@ const styles = StyleSheet.create({
     paddingBottom: 150,
   },
   title: {
-    color: RED,
+    color: tema.colors.accentText,
     fontSize: 29,
     lineHeight: 35,
-    fontWeight: '900',
+    fontFamily: tema.fuentes.bold,
     textAlign: 'center',
   },
   subtitle: {
     marginTop: 10,
-    color: '#666666',
+    color: tema.colors.textMuted,
     fontSize: 16,
     lineHeight: 22,
     textAlign: 'center',
   },
   card: {
     marginTop: 28,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: tema.colors.surface,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderColor: tema.colors.border,
     paddingHorizontal: 18,
     paddingVertical: 12,
     elevation: 4,
-    shadowColor: '#000000',
+    shadowColor: tema.shadows.md.shadowColor,
     shadowOpacity: 0.12,
     shadowRadius: 7,
     shadowOffset: { width: 0, height: 3 },
@@ -132,17 +222,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   rowLabel: {
-    color: '#777777',
+    color: tema.colors.textMuted,
     fontSize: 13,
     lineHeight: 18,
-    fontWeight: '700',
+    fontFamily: tema.fuentes.semiBold,
   },
   dataText: {
     marginTop: 3,
-    color: '#333333',
+    color: tema.colors.text,
     fontSize: 17,
     lineHeight: 22,
-    fontWeight: '800',
+    fontFamily: tema.fuentes.bold,
   },
   rowDivider: {
     position: 'absolute',
@@ -150,7 +240,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: 1,
-    backgroundColor: '#ECECEC',
+    backgroundColor: tema.colors.surfaceMuted,
   },
   editButton: {
     position: 'absolute',
@@ -159,11 +249,11 @@ const styles = StyleSheet.create({
     width: 62,
     height: 62,
     borderRadius: 18,
-    backgroundColor: RED,
+    backgroundColor: tema.colors.accentFill,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 8,
-    shadowColor: '#000000',
+    shadowColor: tema.shadows.md.shadowColor,
     shadowOpacity: 0.18,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },

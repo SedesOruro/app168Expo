@@ -1,6 +1,8 @@
 import React, { ReactElement } from 'react';
 import { ActivityIndicator, PressableProps } from 'react-native';
-import styled from 'styled-components/native';
+import styled, { useTheme } from 'styled-components/native';
+
+import type { AppTheme } from '../../theme';
 
 type PrimaryButtonVariant = 'primary' | 'secondary' | 'ghost';
 
@@ -41,7 +43,10 @@ export const PrimaryButton = ({
   loading = false,
   disabled,
   ...props
-}: PrimaryButtonProps): ReactElement => (
+}: PrimaryButtonProps): ReactElement => {
+  const tema = useTheme() as AppTheme;
+
+  return (
   <ButtonContainer
     accessibilityRole="button"
     accessibilityLabel={title}
@@ -51,9 +56,10 @@ export const PrimaryButton = ({
     {...props}
   >
     {loading ? (
-      <ActivityIndicator color={variant === 'ghost' ? '#0AA7A5' : '#FFFFFF'} />
+      <ActivityIndicator color={variant === 'ghost' ? tema.colors.primary : tema.colors.onFill} />
     ) : (
       <ButtonText $variant={variant}>{title}</ButtonText>
     )}
   </ButtonContainer>
-);
+  );
+};

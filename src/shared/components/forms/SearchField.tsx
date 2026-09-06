@@ -1,7 +1,9 @@
 import React, { ReactElement } from 'react';
 import { TextInputProps } from 'react-native';
 import { MaterialIcons as MaterialIcon } from '@expo/vector-icons';
-import styled from 'styled-components/native';
+import styled, { useTheme } from 'styled-components/native';
+
+import type { AppTheme } from '../../theme';
 
 type SearchFieldProps = TextInputProps & {
   label: string;
@@ -28,14 +30,18 @@ export const SearchField = ({
   label,
   placeholder = 'Search',
   ...props
-}: SearchFieldProps): ReactElement => (
+}: SearchFieldProps): ReactElement => {
+  const tema = useTheme() as AppTheme;
+
+  return (
   <Container accessibilityLabel={label}>
     <Input
       accessibilityLabel={label}
       placeholder={placeholder}
-      placeholderTextColor="#7D8E98"
+      placeholderTextColor={tema.colors.textMuted}
       {...props}
     />
-    <MaterialIcon name="search" size={24} color="#7D8E98" />
+    <MaterialIcon name="search" size={24} color={tema.colors.textMuted} />
   </Container>
-);
+  );
+};

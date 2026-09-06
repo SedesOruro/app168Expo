@@ -1,20 +1,37 @@
 import React, { ReactElement } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useTheme } from 'styled-components/native';
+
 import { franjaInstitucional } from '../../../../shared/constants/institucion';
+import type { AppTheme } from '../../../../shared/theme';
+import { fontFamily } from '../../../../shared/theme/typography';
 
 /**
  * Franja de respaldo institucional. Los sellos son marcadores de posicion:
  * cuando esten disponibles los archivos oficiales se sustituyen por <Image>
  * sin tocar la estructura ni los textos.
+ *
+ * Los colores de los sellos son identidad institucional y quedan fijos en los dos
+ * modos. Solo el color del texto sale del tema: el #111111 que tenia fijado era
+ * ilegible sobre el fondo oscuro de la aplicacion.
  */
-export const BrandStrip = (): ReactElement => (
+export const BrandStrip = (): ReactElement => {
+  const tema = useTheme() as AppTheme;
+
+  return (
   <View style={styles.row}>
     {franjaInstitucional.map((entidad) => (
       <View key={entidad.id} style={styles.brandBlock}>
         <View style={[styles.seal, sellos[entidad.id]]} />
         <Text
-          style={[styles.brandText, entidad.id === 'sedes' && styles.sedesText]}
+          style={[
+            styles.brandText,
+            { color: tema.colors.text },
+            entidad.id === 'sedes' && styles.sedesText,
+          ]}
           numberOfLines={2}
+          adjustsFontSizeToFit
+          minimumFontScale={0.8}
         >
           {entidad.titulo}
           {'\n'}
@@ -23,7 +40,8 @@ export const BrandStrip = (): ReactElement => (
       </View>
     ))}
   </View>
-);
+  );
+};
 
 const sellos = StyleSheet.create({
   gobernacion: {
@@ -63,14 +81,12 @@ const styles = StyleSheet.create({
   },
   brandText: {
     flexShrink: 1,
-    color: '#111111',
+    fontFamily: fontFamily.semiBold,
     fontSize: 7,
     lineHeight: 8,
-    fontWeight: '800',
   },
   sedesText: {
     fontSize: 10,
     lineHeight: 11,
-    fontWeight: '900',
   },
 });

@@ -1,6 +1,8 @@
 import React, { ReactElement } from 'react';
 import { MaterialIcons as MaterialIcon } from '@expo/vector-icons';
-import styled from 'styled-components/native';
+import styled, { useTheme } from 'styled-components/native';
+
+import type { AppTheme } from '../../theme';
 
 import { SearchField } from './SearchField';
 
@@ -57,7 +59,10 @@ export const SearchFilterBar = ({
   onCalendarPress,
   activeFilterCount = 0,
   placeholder = 'Search',
-}: SearchFilterBarProps): ReactElement => (
+}: SearchFilterBarProps): ReactElement => {
+  const tema = useTheme() as AppTheme;
+
+  return (
   <Container>
     <SearchWrap>
       <SearchField
@@ -74,7 +79,7 @@ export const SearchFilterBar = ({
         accessibilityLabel="Open calendar"
         onPress={onCalendarPress}
       >
-        <MaterialIcon name="calendar-today" size={22} color="#0AA7A5" />
+        <MaterialIcon name="calendar-today" size={22} color={tema.colors.primary} />
       </ActionButton>
     ) : null}
 
@@ -83,7 +88,7 @@ export const SearchFilterBar = ({
       accessibilityLabel="Open filters"
       onPress={onFilterPress}
     >
-      <MaterialIcon name="tune" size={24} color="#0AA7A5" />
+      <MaterialIcon name="tune" size={24} color={tema.colors.primary} />
       {activeFilterCount > 0 ? (
         <CountBadge>
           <CountText>{activeFilterCount}</CountText>
@@ -91,4 +96,5 @@ export const SearchFilterBar = ({
       ) : null}
     </ActionButton>
   </Container>
-);
+  );
+};

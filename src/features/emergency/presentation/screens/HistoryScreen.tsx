@@ -9,21 +9,24 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from 'styled-components/native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 
 import type { MainStackParamList } from '../../../../app/navigation/types';
+import type { AppTheme } from '../../../../shared/theme';
 import { BottomTabBar } from '../components/BottomTabBar';
 import { emergencyApi } from '../../data/EmergencyApi';
 import { useEmergencyFlow } from '../providers/EmergencyFlowProvider';
 
 type HistoryNavigation = NativeStackNavigationProp<MainStackParamList, 'History'>;
 
-const RED = '#F63F5F';
 
 export const HistoryScreen = (): ReactElement => {
+  const tema = useTheme() as AppTheme;
+  const estilos = crearEstilos(tema);
   const navigation = useNavigation<HistoryNavigation>();
   const { setCurrentEmergency } = useEmergencyFlow();
   const query = useQuery({
@@ -33,36 +36,36 @@ export const HistoryScreen = (): ReactElement => {
   const emergencies = query.data ?? [];
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Mis emergencias</Text>
-        <Text style={styles.subtitle}>Codigo, tipo, estado y fecha del evento.</Text>
+    <SafeAreaView style={estilos.screen}>
+      <StatusBar barStyle={tema.isDark ? 'light-content' : 'dark-content'} backgroundColor={tema.colors.surface} />
+      <ScrollView contentContainerStyle={estilos.content}>
+        <Text style={estilos.title}>Mis emergencias</Text>
+        <Text style={estilos.subtitle}>Codigo, tipo, estado y fecha del evento.</Text>
 
-        {query.isLoading ? <ActivityIndicator size="large" color={RED} /> : null}
+        {query.isLoading ? <ActivityIndicator size="large" color={tema.colors.accentText} /> : null}
         {emergencies.map(item => (
           <Pressable
             key={item.uuid}
-            style={styles.card}
+            style={estilos.card}
             onPress={() => {
               setCurrentEmergency(item);
               navigation.navigate('CaseTracking', { emergencyUuid: item.uuid });
             }}
           >
-            <View style={styles.iconWrap}>
-              <MaterialCommunityIcons name="clipboard-pulse" size={28} color={RED} />
+            <View style={estilos.iconWrap}>
+              <MaterialCommunityIcons name="clipboard-pulse" size={28} color={tema.colors.accentText} />
             </View>
-            <View style={styles.cardBody}>
-              <Text style={styles.code}>{item.codigo_publico}</Text>
-              <Text style={styles.meta}>
+            <View style={estilos.cardBody}>
+              <Text style={estilos.code}>{item.codigo_publico}</Text>
+              <Text style={estilos.meta}>
                 {item.tipo?.nombre ?? 'Emergencia'} | {item.estado?.nombre ?? 'Sin estado'}
               </Text>
-              <Text style={styles.date}>{new Date(item.created_at).toLocaleString()}</Text>
+              <Text style={estilos.date}>{new Date(item.created_at).toLocaleString()}</Text>
             </View>
           </Pressable>
         ))}
         {!query.isLoading && emergencies.length === 0 ? (
-          <Text style={styles.emptyText}>Todavia no registro emergencias.</Text>
+          <Text style={estilos.emptyText}>Todavia no registro emergencias.</Text>
         ) : null}
       </ScrollView>
       <BottomTabBar active="History" navigation={navigation} />
@@ -70,10 +73,11 @@ export const HistoryScreen = (): ReactElement => {
   );
 };
 
-const styles = StyleSheet.create({
+const crearEstilos = (tema: AppTheme) =>
+  StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#F4F4F4',
+    backgroundColor: tema.colors.background,
   },
   content: {
     paddingHorizontal: 26,
@@ -81,16 +85,16 @@ const styles = StyleSheet.create({
     paddingBottom: 130,
   },
   title: {
-    color: RED,
+    color: tema.colors.accentText,
     fontSize: 30,
     lineHeight: 36,
-    fontWeight: '900',
+    fontFamily: tema.fuentes.bold,
     textAlign: 'center',
   },
   subtitle: {
     marginTop: 10,
     marginBottom: 20,
-    color: '#666666',
+    color: tema.colors.textMuted,
     fontSize: 16,
     lineHeight: 22,
     textAlign: 'center',
@@ -99,8 +103,8 @@ const styles = StyleSheet.create({
     marginTop: 14,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E2E2E2',
-    backgroundColor: '#FFFFFF',
+    borderColor: tema.colors.border,
+    backgroundColor: tema.colors.surface,
     padding: 18,
     flexDirection: 'row',
     gap: 14,
@@ -110,7 +114,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#FFE8EC',
+    backgroundColor: tema.colors.dangerSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -118,27 +122,27 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   code: {
-    color: '#303030',
+    color: tema.colors.text,
     fontSize: 18,
     lineHeight: 23,
-    fontWeight: '900',
+    fontFamily: tema.fuentes.bold,
   },
   meta: {
     marginTop: 6,
-    color: RED,
+    color: tema.colors.accentText,
     fontSize: 16,
     lineHeight: 21,
-    fontWeight: '900',
+    fontFamily: tema.fuentes.bold,
   },
   date: {
     marginTop: 6,
-    color: '#666666',
+    color: tema.colors.textMuted,
     fontSize: 15,
     lineHeight: 20,
   },
   emptyText: {
     marginTop: 30,
-    color: '#666666',
+    color: tema.colors.textMuted,
     fontSize: 16,
     textAlign: 'center',
   },

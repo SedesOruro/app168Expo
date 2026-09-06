@@ -1,19 +1,13 @@
-import { institucion } from '../../../../shared/constants/institucion';
-import React, { ReactElement, useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import React, { ReactElement } from 'react';
+import { ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from 'styled-components/native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import type { MainStackParamList } from '../../../../app/navigation/types';
-import { BrandStrip } from '../components/BrandStrip';
+import type { AppTheme } from '../../../../shared/theme';
+import { coloresTriaje } from '../../../../shared/theme/colors';
 import { BottomTabBar } from '../components/BottomTabBar';
 
 type InformationNavigation = NativeStackNavigationProp<
@@ -21,299 +15,286 @@ type InformationNavigation = NativeStackNavigationProp<
   'Information'
 >;
 
-const RED = '#F63F5F';
+type NivelTriaje = {
+  numero: string;
+  titulo: string;
+  /** Etiqueta breve de la insignia: el tiempo de espera del nivel. */
+  espera: string;
+  color: (typeof coloresTriaje)[keyof typeof coloresTriaje];
+  texto: string;
+};
 
-const triageLevels = [
+const niveles: NivelTriaje[] = [
   {
-    number: '1',
-    title: 'Resucitación',
-    subtitle: 'Atención inmediata',
-    color: '#F02F35',
-    text: 'Atención al paciente en condiciones que amenazan la vida, requiriendo una intervención médica inmediata. Algunos ejemplos son: Personas con dificultad respiratoria severa, estado de inconsciencia, convulsiones o ausencia de signos vitales.',
+    numero: '1',
+    titulo: 'Resucitacion',
+    espera: 'Inmediata',
+    color: coloresTriaje.resucitacion,
+    texto:
+      'Atencion al paciente en condiciones que amenazan la vida, requiriendo una intervencion medica inmediata. Algunos ejemplos son: personas con dificultad respiratoria severa, estado de inconsciencia, convulsiones o ausencia de signos vitales.',
   },
   {
-    number: '2',
-    title: 'Emergencia',
-    subtitle: 'Espera de 10 a 20 minutos',
-    color: '#FF842D',
-    text: 'Vigilancia del paciente que puede respirar por si mismo, esta consciente, pero tiene un problema que amenaza la vida o perdida de una extremidad u organo. Se atiende a personas agitadas, con dolor severo y afecciones en las cuales el tiempo es critico para iniciar el tratamiento.',
+    numero: '2',
+    titulo: 'Emergencia',
+    espera: '10-20 min',
+    color: coloresTriaje.emergencia,
+    texto:
+      'Vigilancia del paciente que puede respirar por si mismo, esta consciente, pero tiene un problema que amenaza la vida o perdida de una extremidad u organo. Se atiende a personas agitadas, con dolor severo y afecciones en las cuales el tiempo es critico para iniciar el tratamiento.',
   },
   {
-    number: '3',
-    title: 'Urgencia',
-    subtitle: 'Espera de hasta 1 hora',
-    color: '#FFD22C',
-    darkText: true,
-    text: 'Cuidado del paciente estable en condiciones que pueden progresar hacia una emergencia. Se tratan molestias que interfieren en el trabajo o las actividades cotidianas, perdidas de sangre y dolor moderado.',
+    numero: '3',
+    titulo: 'Urgencia',
+    espera: 'Hasta 1 hora',
+    color: coloresTriaje.urgencia,
+    texto:
+      'Cuidado del paciente estable en condiciones que pueden progresar hacia una emergencia. Se tratan molestias que interfieren en el trabajo o las actividades cotidianas, perdidas de sangre y dolor moderado.',
   },
   {
-    number: '4',
-    title: 'Urgencia menor',
-    subtitle: 'Espera de hasta 2 horas',
-    color: '#08AF61',
-    text: 'Atencion al paciente en condiciones relacionadas con su edad, pero con angustia, deterioro potencial o sintomas que disminuiran con la intervencion medica o lo tranquilizaran dentro de 1 o 2 horas.',
+    numero: '4',
+    titulo: 'Urgencia menor',
+    espera: 'Hasta 2 horas',
+    color: coloresTriaje.urgenciaMenor,
+    texto:
+      'Atencion al paciente en condiciones relacionadas con su edad, pero con angustia, deterioro potencial o sintomas que disminuiran con la intervencion medica o lo tranquilizaran dentro de 1 o 2 horas.',
   },
   {
-    number: '5',
-    title: 'Sin urgencia',
-    subtitle: 'Espera de hasta 4 horas',
-    color: '#4353B7',
-    text: 'Atencion al paciente en condiciones que pueden ser agudas, pero que no comprometen su estado general y no representan un riesgo evidente. Tambien se valoran problemas cronicos sin evidencia de deterioro.',
+    numero: '5',
+    titulo: 'Sin urgencia',
+    espera: 'Hasta 4 horas',
+    color: coloresTriaje.sinUrgencia,
+    texto:
+      'Atencion al paciente en condiciones que pueden ser agudas, pero que no comprometen su estado general y no representan un riesgo evidente. Tambien se valoran problemas cronicos sin evidencia de deterioro.',
   },
 ];
 
 export const InformationScreen = (): ReactElement => {
+  const tema = useTheme() as AppTheme;
+  const estilos = crearEstilos(tema);
   const navigation = useNavigation<InformationNavigation>();
-  const [expandedLevels, setExpandedLevels] = useState<Record<string, boolean>>({
-    '1': true,
-  });
-
-  const toggleLevel = (number: string): void => {
-    setExpandedLevels(current => ({
-      ...current,
-      [number]: !current[number],
-    }));
-  };
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <ScrollView contentContainerStyle={styles.content}>
-        <BrandStrip />
-        <Text style={styles.title}>Triage Hospitalario</Text>
-        <Text style={styles.intro}>
-          Un sistema de seleccion y clasificacion de pacientes en los servicios
-          de urgencia, basado en sus necesidades terapeuticas y los recursos
-          disponibles para atenderlos.
+    <SafeAreaView style={estilos.pantalla}>
+      <StatusBar
+        barStyle={tema.isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={tema.colors.background}
+      />
+      <ScrollView contentContainerStyle={estilos.contenido}>
+        <Text style={estilos.rotulo}>REFERENCIA CLINICA</Text>
+        <Text style={estilos.titulo}>Triage Hospitalario</Text>
+        <Text style={estilos.intro}>
+          Sistema de seleccion y clasificacion de pacientes en los servicios de
+          urgencia, segun sus necesidades terapeuticas y los recursos disponibles.
         </Text>
 
-        <View style={styles.definitionRow}>
-          <View style={styles.definitionCard}>
-            <Text style={styles.definitionTitle}>Urgencias</Text>
-            <Text style={styles.definitionText}>
-              Refieren a una situacion en donde se requiere{' '}
-              <Text style={styles.bold}>asistencia medica</Text> en un lapso
-              reducido de tiempo, pero esto no implica riesgo en la vida.
+        <View style={estilos.filaDefiniciones}>
+          <View style={[estilos.tarjetaDefinicion, estilos.bordeUrgencias]}>
+            <Text style={[estilos.tituloDefinicion, estilos.tituloUrgencias]}>
+              Urgencias
+            </Text>
+            <Text style={estilos.textoDefinicion}>
+              Requiere <Text style={estilos.negrita}>asistencia medica</Text> pronta,
+              sin riesgo de vida.
             </Text>
           </View>
-          <View style={styles.definitionCard}>
-            <Text style={styles.definitionTitle}>Emergencias</Text>
-            <Text style={styles.definitionText}>
-              Todas aquellas situaciones en las que se requieren acciones y{' '}
-              <Text style={styles.bold}>decisiones medicas</Text> inmediatas
-              por el riesgo de vida de los involucrados.
+          <View style={[estilos.tarjetaDefinicion, estilos.bordeEmergencias]}>
+            <Text style={[estilos.tituloDefinicion, estilos.tituloEmergencias]}>
+              Emergencias
+            </Text>
+            <Text style={estilos.textoDefinicion}>
+              Requiere <Text style={estilos.negrita}>decisiones inmediatas</Text> por
+              riesgo de vida.
             </Text>
           </View>
         </View>
 
-        {triageLevels.map(level => {
-          const isExpanded = Boolean(expandedLevels[level.number]);
+        <Text style={estilos.rotuloSeccion}>DE MAYOR A MENOR PRIORIDAD</Text>
 
-          return (
-          <Pressable
-            key={level.number}
-            accessibilityRole="button"
-            accessibilityLabel={`${level.title}. ${isExpanded ? 'Contraer' : 'Expandir'}`}
-            onPress={() => toggleLevel(level.number)}
-            style={[
-              styles.triageCard,
-              !isExpanded && styles.triageCardCollapsed,
-              { backgroundColor: level.color },
-            ]}
-          >
-            <View style={styles.triageHeader}>
-              <View style={styles.levelCircle}>
-                <Text style={[styles.levelNumber, { color: level.color }]}>
-                  {level.number}
+        <View style={estilos.linea}>
+          {/* Hilo vertical que enlaza los niveles, por detras de los circulos. */}
+          <View style={estilos.hilo} pointerEvents="none" />
+
+          {niveles.map(nivel => (
+            <View key={nivel.numero} style={estilos.fila}>
+              <View style={[estilos.circulo, { backgroundColor: nivel.color.fondo }]}>
+                <Text
+                  style={[
+                    estilos.numero,
+                    {
+                      color: nivel.color.textoOscuro
+                        ? tema.colors.text
+                        : tema.colors.onFill,
+                    },
+                  ]}
+                >
+                  {nivel.numero}
                 </Text>
               </View>
-              <View>
-                <Text
-                  style={[
-                    styles.triageTitle,
-                    !isExpanded && styles.triageTitleCompact,
-                    level.darkText && styles.triageTextDark,
-                  ]}
-                >
-                  {level.title}
-                </Text>
-                <Text
-                  style={[
-                    styles.triageSubtitle,
-                    level.darkText && styles.triageTextDark,
-                  ]}
-                >
-                  {level.subtitle}
-                </Text>
+
+              <View style={estilos.tarjetaNivel}>
+                <View style={estilos.cabeceraNivel}>
+                  <Text style={estilos.tituloNivel}>{nivel.titulo}</Text>
+                  <View
+                    style={[estilos.insignia, { backgroundColor: nivel.color.tinte }]}
+                  >
+                    <Text style={[estilos.textoInsignia, { color: nivel.color.texto }]}>
+                      {nivel.espera}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={estilos.textoNivel}>{nivel.texto}</Text>
               </View>
             </View>
-            {isExpanded ? (
-              <View style={styles.triageTextBox}>
-                <Text
-                  style={[
-                    styles.triageText,
-                    level.darkText && styles.triageTextDark,
-                  ]}
-                >
-                  {level.text}
-                </Text>
-              </View>
-            ) : null}
-          </Pressable>
-          );
-        })}
-
-        <View style={styles.institucion}>
-          <Text style={styles.institucionNombre}>{institucion.nombreCompleto}</Text>
-          <Text style={styles.institucionLinea}>{institucion.entidadSuperior}</Text>
-          <Text style={styles.institucionLinea}>{institucion.rectoria}</Text>
-          <Text style={styles.institucionSitio}>{institucion.sitioWeb}</Text>
+          ))}
         </View>
       </ScrollView>
+
       <BottomTabBar active="Information" navigation={navigation} />
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
-  institucion: {
-    marginTop: 24,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E4E9EC',
-    alignItems: 'center',
-    gap: 2,
-  },
-  institucionNombre: {
-    color: '#2F2F2F',
-    fontSize: 12,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  institucionLinea: {
-    color: '#6B7C86',
-    fontSize: 10,
-    textAlign: 'center',
-  },
-  institucionSitio: {
-    marginTop: 4,
-    color: '#0AA7A5',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  screen: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  content: {
-    paddingHorizontal: 26,
-    paddingTop: 28,
-    paddingBottom: 130,
-  },
-  title: {
-    marginTop: 34,
-    color: RED,
-    fontSize: 34,
-    lineHeight: 40,
-    fontWeight: '900',
-    textAlign: 'center',
-  },
-  intro: {
-    marginTop: 28,
-    color: '#222222',
-    fontSize: 19,
-    lineHeight: 25,
-    textAlign: 'center',
-  },
-  definitionRow: {
-    marginTop: 40,
-    flexDirection: 'row',
-    gap: 28,
-  },
-  definitionCard: {
-    flex: 1,
-    minHeight: 236,
-    borderRadius: 8,
-    borderWidth: 1.2,
-    borderColor: RED,
-    paddingHorizontal: 14,
-    paddingVertical: 28,
-    alignItems: 'center',
-  },
-  definitionTitle: {
-    color: RED,
-    fontSize: 24,
-    lineHeight: 30,
-    fontWeight: '900',
-    textAlign: 'center',
-  },
-  definitionText: {
-    marginTop: 20,
-    color: '#333333',
-    fontSize: 14,
-    lineHeight: 19,
-    textAlign: 'center',
-  },
-  bold: {
-    fontWeight: '900',
-  },
-  triageCard: {
-    marginTop: 42,
-    paddingHorizontal: 24,
-    paddingVertical: 28,
-  },
-  triageCardCollapsed: {
-    marginTop: 16,
-    paddingVertical: 26,
-  },
-  triageHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 24,
-  },
-  levelCircle: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  levelNumber: {
-    fontSize: 28,
-    lineHeight: 34,
-    fontWeight: '900',
-  },
-  triageTitle: {
-    color: '#FFFFFF',
-    fontSize: 36,
-    lineHeight: 42,
-  },
-  triageTitleCompact: {
-    fontSize: 34,
-    lineHeight: 40,
-  },
-  triageSubtitle: {
-    marginTop: 8,
-    color: '#FFFFFF',
-    fontSize: 20,
-    lineHeight: 26,
-    fontWeight: '700',
-  },
-  triageTextBox: {
-    marginTop: 24,
-    borderWidth: 1,
-    borderColor: '#FFFFFF',
-    padding: 18,
-  },
-  triageText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    lineHeight: 21,
-    textAlign: 'center',
-    fontWeight: '700',
-  },
-  triageTextDark: {
-    color: '#000000',
-  },
-});
+const DIAMETRO = 34;
+
+const crearEstilos = (tema: AppTheme) =>
+  StyleSheet.create({
+    pantalla: {
+      flex: 1,
+      backgroundColor: tema.colors.background,
+    },
+    contenido: {
+      paddingHorizontal: tema.spacing.xl,
+      paddingTop: tema.spacing.xl,
+      paddingBottom: 130,
+    },
+    rotulo: {
+      ...tema.estilosTexto.caption,
+      color: tema.colors.textMuted,
+      letterSpacing: 1.4,
+      textAlign: 'center',
+    },
+    titulo: {
+      ...tema.estilosTexto.h1,
+      marginTop: tema.spacing.xs,
+      color: tema.colors.text,
+      textAlign: 'center',
+    },
+    intro: {
+      ...tema.estilosTexto.body,
+      marginTop: tema.spacing.md,
+      color: tema.colors.textMuted,
+      textAlign: 'center',
+    },
+    filaDefiniciones: {
+      marginTop: tema.spacing.xl,
+      flexDirection: 'row',
+      gap: tema.spacing.md,
+    },
+    tarjetaDefinicion: {
+      flex: 1,
+      borderRadius: tema.radius.md,
+      backgroundColor: tema.colors.surface,
+      borderWidth: 1,
+      borderColor: tema.colors.border,
+      // La franja de color va arriba, como en la referencia.
+      borderTopWidth: 4,
+      padding: tema.spacing.md,
+      gap: tema.spacing.xs,
+    },
+    bordeUrgencias: {
+      borderTopColor: tema.colors.primary,
+    },
+    bordeEmergencias: {
+      borderTopColor: tema.colors.secondary,
+    },
+    tituloDefinicion: {
+      ...tema.estilosTexto.bodyStrong,
+    },
+    // Variantes oscuras: primary da 2.96 sobre blanco y secondary 4.17, ninguno
+    // llega a AA como texto.
+    tituloUrgencias: {
+      color: tema.colors.primaryDark,
+    },
+    tituloEmergencias: {
+      color: tema.colors.secondaryDark,
+    },
+    textoDefinicion: {
+      ...tema.estilosTexto.caption,
+      color: tema.colors.textMuted,
+    },
+    negrita: {
+      fontFamily: tema.fuentes.bold,
+      color: tema.colors.text,
+    },
+    rotuloSeccion: {
+      ...tema.estilosTexto.caption,
+      marginTop: tema.spacing.xl,
+      marginBottom: tema.spacing.md,
+      color: tema.colors.textMuted,
+      letterSpacing: 1.2,
+    },
+    linea: {
+      position: 'relative',
+    },
+    hilo: {
+      position: 'absolute',
+      left: DIAMETRO / 2 - 1,
+      top: DIAMETRO,
+      bottom: DIAMETRO / 2,
+      width: 2,
+      backgroundColor: tema.colors.border,
+    },
+    fila: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: tema.spacing.md,
+      marginBottom: tema.spacing.md,
+    },
+    circulo: {
+      width: DIAMETRO,
+      height: DIAMETRO,
+      borderRadius: DIAMETRO / 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    // 20px en negrita cuenta como texto grande, que solo pide 3.0 de contraste.
+    numero: {
+      fontFamily: tema.fuentes.bold,
+      fontSize: 20,
+      lineHeight: 24,
+    },
+    tarjetaNivel: {
+      flex: 1,
+      borderRadius: tema.radius.md,
+      backgroundColor: tema.colors.surface,
+      borderWidth: 1,
+      borderColor: tema.colors.border,
+      padding: tema.spacing.lg,
+      gap: tema.spacing.sm,
+    },
+    cabeceraNivel: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: tema.spacing.sm,
+    },
+    tituloNivel: {
+      ...tema.estilosTexto.h3,
+      flexShrink: 1,
+      color: tema.colors.text,
+    },
+    insignia: {
+      borderRadius: tema.radius.pill,
+      paddingHorizontal: tema.spacing.md,
+      paddingVertical: 4,
+    },
+    textoInsignia: {
+      ...tema.estilosTexto.caption,
+      fontSize: 11,
+    },
+    textoNivel: {
+      ...tema.estilosTexto.body,
+      fontSize: 14,
+      lineHeight: 20,
+      color: tema.colors.textMuted,
+    },
+  });

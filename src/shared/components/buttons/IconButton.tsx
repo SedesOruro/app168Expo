@@ -1,7 +1,9 @@
 import React, { ReactElement } from 'react';
 import { PressableProps } from 'react-native';
 import { MaterialIcons as MaterialIcon } from '@expo/vector-icons';
-import styled from 'styled-components/native';
+import styled, { useTheme } from 'styled-components/native';
+
+import type { AppTheme } from '../../theme';
 
 export type AppIconName = React.ComponentProps<typeof MaterialIcon>['name'];
 
@@ -29,7 +31,10 @@ export const AppIconButton = ({
   size = 24,
   tone = 'surface',
   ...props
-}: AppIconButtonProps): ReactElement => (
+}: AppIconButtonProps): ReactElement => {
+  const tema = useTheme() as AppTheme;
+
+  return (
   <IconButtonContainer
     accessibilityRole="button"
     accessibilityLabel={label}
@@ -40,7 +45,8 @@ export const AppIconButton = ({
     <MaterialIcon
       name={name}
       size={size}
-      color={tone === 'primary' ? '#FFFFFF' : '#17262A'}
+      color={tone === 'primary' ? tema.colors.onFill : tema.colors.text}
     />
   </IconButtonContainer>
-);
+  );
+};

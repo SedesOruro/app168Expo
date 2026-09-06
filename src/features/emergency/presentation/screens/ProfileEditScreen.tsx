@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from 'styled-components/native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TextInput } from 'react-native-paper';
@@ -17,6 +18,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { MainStackParamList } from '../../../../app/navigation/types';
+import type { AppTheme } from '../../../../shared/theme';
 import { emergencyApi } from '../../data/EmergencyApi';
 
 type ProfileEditNavigation = NativeStackNavigationProp<
@@ -54,9 +56,10 @@ const initialForm: FormState = {
   contactPhone: '',
 };
 
-const RED = '#F63F5F';
 
 export const ProfileEditScreen = (): ReactElement => {
+  const tema = useTheme() as AppTheme;
+  const estilos = crearEstilos(tema);
   const navigation = useNavigation<ProfileEditNavigation>();
   const queryClient = useQueryClient();
   const query = useQuery({ queryKey: ['emergency-profile'], queryFn: emergencyApi.getProfile });
@@ -140,19 +143,19 @@ export const ProfileEditScreen = (): ReactElement => {
   ];
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar barStyle="light-content" backgroundColor={RED} />
-      <View style={styles.header}>
-        <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-          <MaterialCommunityIcons name="arrow-left" size={32} color="#FFFFFF" />
+    <SafeAreaView style={estilos.screen}>
+      <StatusBar barStyle={tema.isDark ? 'light-content' : 'dark-content'} backgroundColor={tema.colors.accentText} />
+      <View style={estilos.header}>
+        <Pressable style={estilos.backButton} onPress={() => navigation.goBack()}>
+          <MaterialCommunityIcons name="arrow-left" size={32} color={tema.colors.onFill} />
         </Pressable>
-        <Text style={styles.headerTitle}>Actualizar datos</Text>
+        <Text style={estilos.headerTitle}>Actualizar datos</Text>
       </View>
       {query.isLoading ? (
-        <ActivityIndicator style={styles.loader} size="large" color={RED} />
+        <ActivityIndicator style={estilos.loader} size="large" color={tema.colors.accentText} />
       ) : (
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <Text style={styles.description}>
+        <ScrollView contentContainerStyle={estilos.content} keyboardShouldPersistTaps="handled">
+          <Text style={estilos.description}>
             Mantenga actualizados los datos que vera el operador durante una emergencia.
           </Text>
           {fields.map(field => (
@@ -164,16 +167,16 @@ export const ProfileEditScreen = (): ReactElement => {
               editable={field.editable !== false}
               keyboardType={field.keyboardType}
               onChangeText={value => setField(field.key, value)}
-              style={styles.input}
-              outlineColor="#BDBDBD"
-              activeOutlineColor={RED}
+              style={estilos.input}
+              outlineColor={tema.colors.border}
+              activeOutlineColor={tema.colors.accentText}
             />
           ))}
-          <Pressable disabled={saving} style={styles.updateButton} onPress={save}>
+          <Pressable disabled={saving} style={estilos.updateButton} onPress={save}>
             {saving ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={tema.colors.onFill} />
             ) : (
-              <Text style={styles.updateButtonText}>ACTUALIZAR</Text>
+              <Text style={estilos.updateButtonText}>ACTUALIZAR</Text>
             )}
           </Pressable>
         </ScrollView>
@@ -182,11 +185,12 @@ export const ProfileEditScreen = (): ReactElement => {
   );
 };
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#FFFFFF' },
+const crearEstilos = (tema: AppTheme) =>
+  StyleSheet.create({
+  screen: { flex: 1, backgroundColor: tema.colors.surface },
   header: {
     height: 72,
-    backgroundColor: RED,
+    backgroundColor: tema.colors.accentFill,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -200,24 +204,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: { color: '#FFFFFF', fontSize: 24, lineHeight: 30, fontWeight: '900' },
+  headerTitle: { color: tema.colors.onFill, fontSize: 24, lineHeight: 30, fontFamily: tema.fuentes.bold },
   loader: { flex: 1 },
   content: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 44 },
   description: {
-    color: '#444444',
+    color: tema.colors.text,
     fontSize: 17,
     lineHeight: 23,
     textAlign: 'center',
     marginBottom: 12,
   },
-  input: { marginTop: 12, backgroundColor: '#FFFFFF' },
+  input: { marginTop: 12, backgroundColor: tema.colors.surface },
   updateButton: {
     marginTop: 24,
     minHeight: 64,
     borderRadius: 8,
-    backgroundColor: RED,
+    backgroundColor: tema.colors.accentFill,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  updateButtonText: { color: '#FFFFFF', fontSize: 20, fontWeight: '900', letterSpacing: 1 },
+  updateButtonText: { color: tema.colors.onFill, fontSize: 20, fontFamily: tema.fuentes.bold, letterSpacing: 1 },
 });

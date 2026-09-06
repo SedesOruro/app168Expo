@@ -1,7 +1,9 @@
 import React, { ReactElement } from 'react';
 import { Modal } from 'react-native';
 import { MaterialIcons as MaterialIcon } from '@expo/vector-icons';
-import styled from 'styled-components/native';
+import styled, { useTheme } from 'styled-components/native';
+
+import type { AppTheme } from '../../theme';
 
 import { PrimaryButton } from '../buttons/PrimaryButton';
 import type { FilterSection, SelectedFilters } from '../../types/filters';
@@ -96,7 +98,10 @@ export const FilterSheet = ({
   onApply,
   onReset,
   onClose,
-}: FilterSheetProps): ReactElement => (
+}: FilterSheetProps): ReactElement => {
+  const tema = useTheme() as AppTheme;
+
+  return (
   <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
     <Backdrop accessibilityLabel="Close filters" onPress={onClose}>
       <Sheet onStartShouldSetResponder={() => true}>
@@ -107,7 +112,7 @@ export const FilterSheet = ({
             accessibilityLabel="Close filters"
             onPress={onClose}
           >
-            <MaterialIcon name="close" size={24} color="#5F7180" />
+            <MaterialIcon name="close" size={24} color={tema.colors.textMuted} />
           </CloseButton>
         </Header>
 
@@ -145,4 +150,5 @@ export const FilterSheet = ({
       </Sheet>
     </Backdrop>
   </Modal>
-);
+  );
+};

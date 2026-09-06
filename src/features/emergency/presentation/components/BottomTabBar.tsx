@@ -1,6 +1,9 @@
 import React, { ReactElement } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTheme } from 'styled-components/native';
+
+import type { AppTheme } from '../../../../shared/theme';
 
 type TabKey = 'Dashboard' | 'HealthCenters' | 'History' | 'Information' | 'Profile';
 
@@ -21,81 +24,90 @@ const tabs: {
   label: string;
 }[] = [
   { key: 'Dashboard', icon: 'home', label: 'Inicio' },
-  { key: 'HealthCenters', icon: 'map', label: 'Mapa' },
+  { key: 'HealthCenters', icon: 'map-marker', label: 'Mapa' },
   { key: 'History', icon: 'clipboard-text-clock', label: 'Historial' },
-  { key: 'Information', icon: 'information', label: 'Info' },
-  { key: 'Profile', icon: 'account-circle', label: 'Perfil' },
+  { key: 'Information', icon: 'compass', label: 'Info' },
+  { key: 'Profile', icon: 'account', label: 'Perfil' },
 ];
 
+/**
+ * Barra inferior segun el kit: tarjeta redondeada sobre `surfaceMuted`, icono con
+ * la etiqueta visible debajo, y la pestana activa marcada por el color del acento
+ * en icono y texto. Antes las etiquetas estaban ocultas y la activa se senalaba con
+ * una barrita superior, que el kit no usa.
+ */
 export const BottomTabBar = ({
   active,
   navigation,
-}: BottomTabBarProps): ReactElement => (
-  <View style={styles.wrap}>
-    {tabs.map(tab => {
-      const isActive = tab.key === active;
+}: BottomTabBarProps): ReactElement => {
+  const tema = useTheme() as AppTheme;
+  const estilos = crearEstilos(tema);
 
-      return (
-        <Pressable
-          key={tab.key}
-          accessibilityRole="button"
-          accessibilityLabel={tab.label}
-          onPress={() => navigation.navigate(tab.key)}
-          style={styles.item}
-        >
-          <View style={[styles.marker, isActive && styles.markerActive]} />
-          <MaterialCommunityIcons
-            name={tab.icon}
-            size={32}
-            color={isActive ? '#F63F5F' : '#6A6A6A'}
-          />
-          <Text style={styles.hiddenLabel}>{tab.label}</Text>
-        </Pressable>
-      );
-    })}
-  </View>
-);
+  return (
+    <View style={estilos.envoltorio}>
+      {tabs.map(tab => {
+        const activa = tab.key === active;
 
-const styles = StyleSheet.create({
-  wrap: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 26,
-    height: 74,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#CFCFCF',
-    elevation: 7,
-    shadowColor: '#000000',
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-evenly',
-  },
-  item: {
-    width: 62,
-    height: 70,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  marker: {
-    position: 'absolute',
-    top: 0,
-    width: 44,
-    height: 5,
-    backgroundColor: 'transparent',
-  },
-  markerActive: {
-    backgroundColor: '#F63F5F',
-  },
-  hiddenLabel: {
-    position: 'absolute',
-    width: 1,
-    height: 1,
-    opacity: 0,
-  },
-});
+        return (
+          <Pressable
+            key={tab.key}
+            accessibilityRole="button"
+            accessibilityLabel={tab.label}
+            accessibilityState={{ selected: activa }}
+            onPress={() => navigation.navigate(tab.key)}
+            style={estilos.elemento}
+          >
+            <MaterialCommunityIcons
+              name={tab.icon}
+              size={26}
+              color={activa ? tema.colors.accentText : tema.colors.text}
+            />
+            <Text
+              style={[estilos.etiqueta, activa && estilos.etiquetaActiva]}
+              numberOfLines={1}
+            >
+              {tab.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+};
+
+const crearEstilos = (tema: AppTheme) =>
+  StyleSheet.create({
+    envoltorio: {
+      position: 'absolute',
+      left: tema.spacing.lg,
+      right: tema.spacing.lg,
+      bottom: tema.spacing.xl,
+      minHeight: 76,
+      paddingVertical: tema.spacing.md,
+      backgroundColor: tema.colors.surfaceMuted,
+      borderRadius: 28,
+      elevation: 7,
+      shadowColor: tema.shadows.md.shadowColor,
+      shadowOpacity: 0.12,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 4 },
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-around',
+    },
+    elemento: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 3,
+    },
+    etiqueta: {
+      ...tema.estilosTexto.bodyStrong,
+      fontSize: 13,
+      lineHeight: 17,
+      color: tema.colors.text,
+    },
+    etiquetaActiva: {
+      color: tema.colors.accentText,
+    },
+  });

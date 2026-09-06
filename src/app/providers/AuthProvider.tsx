@@ -22,13 +22,27 @@ import { secureStorage } from '../../shared/storage/secureStorage';
 
 type AuthStatus = 'checking' | 'authenticated' | 'guest';
 
+/**
+ * Clave del modo exploracion: quien pulsa "Saltar" en el registro puede recorrer
+ * la aplicacion sin cuenta. Se persiste para no volver a mostrarle el registro en
+ * cada arranque. El boton de emergencia sigue exigiendo registro: `pedirRegistro`
+ * devuelve a esa persona al formulario cuando lo intenta.
+ */
+const CLAVE_EXPLORACION = 'modo_exploracion';
+
 type AuthContextValue = {
   status: AuthStatus;
   user: User | null;
   accessToken: string | null;
+  /** Cierto cuando se salto el registro y se esta recorriendo la app sin cuenta. */
+  explorando: boolean;
   signIn: (credentials: LoginCredentials) => Promise<void>;
   signUp: (payload: RegisterPayload) => Promise<void>;
   signOut: () => Promise<void>;
+  /** Salta el registro y entra a la aplicacion como visitante. */
+  saltarRegistro: () => Promise<void>;
+  /** Saca del modo exploracion para devolver a la persona al registro. */
+  pedirRegistro: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -44,6 +58,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): ReactElement => {
   const [status, setStatus] = useState<AuthStatus>('checking');
   const [user, setUser] = useState<User | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [explorando, setExplorando] = useState(false);
 
   const applySession = useCallback(async (session: {
     user: User;
@@ -53,6 +68,9 @@ export const AuthProvider = ({ children }: AuthProviderProps): ReactElement => {
     await tokenStorage.saveTokens(session.accessToken, session.refreshToken);
     setUser(session.user);
     setAccessToken(session.accessToken);
+    // Al registrarse o entrar deja de ser visitante.
+    setExplorando(false);
+    await secureStorage.removeItem(CLAVE_EXPLORACION).catch(() => undefined);
     setStatus('authenticated');
   }, []);
 
@@ -62,7 +80,13 @@ export const AuthProvider = ({ children }: AuthProviderProps): ReactElement => {
       try {
         const refreshToken = await tokenStorage.getRefreshToken();
         if (!refreshToken) {
-          if (active) setStatus('guest');
+          const saltado = await secureStorage
+            .getItem(CLAVE_EXPLORACION)
+            .catch(() => null);
+          if (active) {
+            setExplorando(saltado === 'true');
+            setStatus('guest');
+          }
           return;
         }
         const session = await authRepository.refreshToken(refreshToken);
@@ -96,12 +120,25 @@ export const AuthProvider = ({ children }: AuthProviderProps): ReactElement => {
     [applySession],
   );
 
+  const saltarRegistro = useCallback(async (): Promise<void> => {
+    await secureStorage.setItem(CLAVE_EXPLORACION, 'true').catch(() => undefined);
+    setExplorando(true);
+    setStatus('guest');
+  }, []);
+
+  const pedirRegistro = useCallback(async (): Promise<void> => {
+    await secureStorage.removeItem(CLAVE_EXPLORACION).catch(() => undefined);
+    setExplorando(false);
+  }, []);
+
   const signOut = useCallback(async (): Promise<void> => {
     const refreshToken = await tokenStorage.getRefreshToken();
     await authRepository.logout(refreshToken).catch(() => undefined);
     await tokenStorage.clear();
+    await secureStorage.removeItem(CLAVE_EXPLORACION).catch(() => undefined);
     setUser(null);
     setAccessToken(null);
+    setExplorando(false);
     setStatus('guest');
   }, []);
 
@@ -110,11 +147,24 @@ export const AuthProvider = ({ children }: AuthProviderProps): ReactElement => {
       status,
       user,
       accessToken,
+      explorando,
       signIn,
       signUp,
       signOut,
+      saltarRegistro,
+      pedirRegistro,
     }),
-    [accessToken, signIn, signOut, signUp, status, user],
+    [
+      accessToken,
+      explorando,
+      pedirRegistro,
+      saltarRegistro,
+      signIn,
+      signOut,
+      signUp,
+      status,
+      user,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -8,11 +8,13 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from 'styled-components/native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import type { MainStackParamList } from '../../../../app/navigation/types';
+import type { AppTheme } from '../../../../shared/theme';
 import { EmergencyFlowSteps } from '../components/EmergencyFlowSteps';
 import { useEmergencyFlow } from '../providers/EmergencyFlowProvider';
 
@@ -21,7 +23,6 @@ type EmergencyTypeNavigation = NativeStackNavigationProp<
   'EmergencyType'
 >;
 
-const RED = '#F63F5F';
 
 const emergencyTypes = [
   { icon: 'car-brake-alert', label: 'Accidente' },
@@ -45,32 +46,34 @@ const typeCodes: Record<string, string> = {
 };
 
 export const EmergencyTypeScreen = (): ReactElement => {
+  const tema = useTheme() as AppTheme;
+  const estilos = crearEstilos(tema);
   const navigation = useNavigation<EmergencyTypeNavigation>();
   const { updateDraft } = useEmergencyFlow();
   const [selectedType, setSelectedType] = useState('Accidente');
   const [severity, setSeverity] = useState('Alta');
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar barStyle="light-content" backgroundColor={RED} />
-      <View style={styles.header}>
+    <SafeAreaView style={estilos.screen}>
+      <StatusBar barStyle={tema.isDark ? 'light-content' : 'dark-content'} backgroundColor={tema.colors.accentText} />
+      <View style={estilos.header}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Volver"
-          style={styles.backButton}
+          style={estilos.backButton}
           onPress={() => navigation.goBack()}
         >
-          <MaterialCommunityIcons name="arrow-left" size={32} color="#FFFFFF" />
+          <MaterialCommunityIcons name="arrow-left" size={32} color={tema.colors.onFill} />
         </Pressable>
-        <Text style={styles.headerTitle}>Tipo de emergencia</Text>
+        <Text style={estilos.headerTitle}>Tipo de emergencia</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={estilos.content}>
         <EmergencyFlowSteps activeStep={3} />
 
-        <Text style={styles.question}>Que ocurre?</Text>
+        <Text style={estilos.question}>Que ocurre?</Text>
 
-        <View style={styles.grid}>
+        <View style={estilos.grid}>
           {emergencyTypes.map(item => {
             const isActive = item.label === selectedType;
 
@@ -78,15 +81,15 @@ export const EmergencyTypeScreen = (): ReactElement => {
               <Pressable
                 key={item.label}
                 accessibilityRole="button"
-                style={[styles.typeButton, isActive && styles.typeButtonActive]}
+                style={[estilos.typeButton, isActive && estilos.typeButtonActive]}
                 onPress={() => setSelectedType(item.label)}
               >
                 <MaterialCommunityIcons
                   name={item.icon}
                   size={34}
-                  color={isActive ? '#FFFFFF' : RED}
+                  color={isActive ? tema.colors.onFill : tema.colors.accentText}
                 />
-                <Text style={[styles.typeText, isActive && styles.typeTextActive]}>
+                <Text style={[estilos.typeText, isActive && estilos.typeTextActive]}>
                   {item.label}
                 </Text>
               </Pressable>
@@ -94,8 +97,8 @@ export const EmergencyTypeScreen = (): ReactElement => {
           })}
         </View>
 
-        <Text style={styles.sectionTitle}>Gravedad percibida</Text>
-        <View style={styles.severityRow}>
+        <Text style={estilos.sectionTitle}>Gravedad percibida</Text>
+        <View style={estilos.severityRow}>
           {severities.map(item => {
             const isActive = item === severity;
 
@@ -103,13 +106,13 @@ export const EmergencyTypeScreen = (): ReactElement => {
               <Pressable
                 key={item}
                 accessibilityRole="button"
-                style={[styles.severityButton, isActive && styles.severityButtonActive]}
+                style={[estilos.severityButton, isActive && estilos.severityButtonActive]}
                 onPress={() => setSeverity(item)}
               >
                 <Text
                   style={[
-                    styles.severityText,
-                    isActive && styles.severityTextActive,
+                    estilos.severityText,
+                    isActive && estilos.severityTextActive,
                   ]}
                 >
                   {item}
@@ -121,7 +124,7 @@ export const EmergencyTypeScreen = (): ReactElement => {
 
         <Pressable
           accessibilityRole="button"
-          style={({ pressed }) => [styles.continueButton, pressed && styles.pressed]}
+          style={({ pressed }) => [estilos.continueButton, pressed && estilos.pressed]}
           onPress={() => {
             updateDraft({
               typeCode: typeCodes[selectedType] ?? 'OTRO',
@@ -130,21 +133,22 @@ export const EmergencyTypeScreen = (): ReactElement => {
             navigation.navigate('Triage');
           }}
         >
-          <Text style={styles.continueText}>Continuar</Text>
+          <Text style={estilos.continueText}>Continuar</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
+const crearEstilos = (tema: AppTheme) =>
+  StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: tema.colors.surface,
   },
   header: {
     height: 64,
-    backgroundColor: RED,
+    backgroundColor: tema.colors.accentFill,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -159,10 +163,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    color: '#FFFFFF',
+    color: tema.colors.onFill,
     fontSize: 21,
     lineHeight: 26,
-    fontWeight: '800',
+    fontFamily: tema.fuentes.bold,
   },
   content: {
     paddingHorizontal: 24,
@@ -170,10 +174,10 @@ const styles = StyleSheet.create({
     paddingBottom: 38,
   },
   question: {
-    color: '#303030',
+    color: tema.colors.text,
     fontSize: 28,
     lineHeight: 34,
-    fontWeight: '900',
+    fontFamily: tema.fuentes.bold,
     textAlign: 'center',
   },
   grid: {
@@ -187,31 +191,31 @@ const styles = StyleSheet.create({
     minHeight: 94,
     borderRadius: 8,
     borderWidth: 1.2,
-    borderColor: '#D9D9D9',
-    backgroundColor: '#FFFFFF',
+    borderColor: tema.colors.border,
+    backgroundColor: tema.colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
   },
   typeButtonActive: {
-    backgroundColor: RED,
-    borderColor: RED,
+    backgroundColor: tema.colors.accentFill,
+    borderColor: tema.colors.accentFill,
   },
   typeText: {
-    color: '#444444',
+    color: tema.colors.text,
     fontSize: 17,
     lineHeight: 22,
-    fontWeight: '800',
+    fontFamily: tema.fuentes.bold,
   },
   typeTextActive: {
-    color: '#FFFFFF',
+    color: tema.colors.onFill,
   },
   sectionTitle: {
     marginTop: 32,
-    color: '#303030',
+    color: tema.colors.text,
     fontSize: 20,
     lineHeight: 26,
-    fontWeight: '900',
+    fontFamily: tema.fuentes.bold,
   },
   severityRow: {
     marginTop: 16,
@@ -223,27 +227,27 @@ const styles = StyleSheet.create({
     minHeight: 56,
     borderRadius: 8,
     borderWidth: 1.2,
-    borderColor: RED,
+    borderColor: tema.colors.accentText,
     alignItems: 'center',
     justifyContent: 'center',
   },
   severityButtonActive: {
-    backgroundColor: RED,
+    backgroundColor: tema.colors.accentFill,
   },
   severityText: {
-    color: RED,
+    color: tema.colors.accentText,
     fontSize: 17,
     lineHeight: 22,
-    fontWeight: '900',
+    fontFamily: tema.fuentes.bold,
   },
   severityTextActive: {
-    color: '#FFFFFF',
+    color: tema.colors.onFill,
   },
   continueButton: {
     marginTop: 34,
     minHeight: 66,
     borderRadius: 8,
-    backgroundColor: RED,
+    backgroundColor: tema.colors.accentFill,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 6,
@@ -252,9 +256,9 @@ const styles = StyleSheet.create({
     opacity: 0.86,
   },
   continueText: {
-    color: '#FFFFFF',
+    color: tema.colors.onFill,
     fontSize: 20,
     lineHeight: 25,
-    fontWeight: '900',
+    fontFamily: tema.fuentes.bold,
   },
 });

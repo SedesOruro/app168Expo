@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from 'styled-components/native';
 import { TextInput } from 'react-native-paper';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -24,15 +25,17 @@ import {
 } from 'expo-audio';
 
 import type { MainStackParamList } from '../../../../app/navigation/types';
+import type { AppTheme } from '../../../../shared/theme';
 import { emergencyApi } from '../../data/EmergencyApi';
 import { useEmergencyFlow } from '../providers/EmergencyFlowProvider';
 
 type EvidenceNavigation = NativeStackNavigationProp<MainStackParamList, 'Evidence'>;
 type EvidenceRoute = RouteProp<MainStackParamList, 'Evidence'>;
 
-const RED = '#F63F5F';
 
 export const EvidenceScreen = (): ReactElement => {
+  const tema = useTheme() as AppTheme;
+  const estilos = crearEstilos(tema);
   const navigation = useNavigation<EvidenceNavigation>();
   const route = useRoute<EvidenceRoute>();
   const { currentEmergency } = useEmergencyFlow();
@@ -167,47 +170,47 @@ export const EvidenceScreen = (): ReactElement => {
   };
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar barStyle="light-content" backgroundColor={RED} />
-      <View style={styles.header}>
+    <SafeAreaView style={estilos.screen}>
+      <StatusBar barStyle={tema.isDark ? 'light-content' : 'dark-content'} backgroundColor={tema.colors.accentText} />
+      <View style={estilos.header}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Volver"
-          style={styles.backButton}
+          style={estilos.backButton}
           onPress={() => navigation.goBack()}
         >
-          <MaterialCommunityIcons name="arrow-left" size={32} color="#FFFFFF" />
+          <MaterialCommunityIcons name="arrow-left" size={32} color={tema.colors.onFill} />
         </Pressable>
-        <Text style={styles.headerTitle}>Evidencia opcional</Text>
+        <Text style={estilos.headerTitle}>Evidencia opcional</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Agregar informacion</Text>
-        <Text style={styles.subtitle}>
+      <ScrollView contentContainerStyle={estilos.content}>
+        <Text style={estilos.title}>Agregar informacion</Text>
+        <Text style={estilos.subtitle}>
           Esto no frena la emergencia. Solo suma datos para el operador.
         </Text>
 
         <Pressable
           accessibilityRole="button"
           disabled={uploading || recorderState.isRecording}
-          style={styles.actionButton}
+          style={estilos.actionButton}
           onPress={takePhoto}
         >
-          <MaterialCommunityIcons name="camera" size={30} color={RED} />
-          <Text style={styles.actionText}>Tomar y enviar fotografia</Text>
+          <MaterialCommunityIcons name="camera" size={30} color={tema.colors.accentText} />
+          <Text style={estilos.actionText}>Tomar y enviar fotografia</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
           disabled={uploading}
-          style={styles.actionButton}
+          style={estilos.actionButton}
           onPress={toggleRecording}
         >
           <MaterialCommunityIcons
             name={recorderState.isRecording ? 'stop-circle' : 'microphone'}
             size={30}
-            color={RED}
+            color={tema.colors.accentText}
           />
-          <Text style={styles.actionText}>
+          <Text style={estilos.actionText}>
             {recorderState.isRecording
               ? `Detener y enviar (${Math.round(recorderState.durationMillis / 1000)} s)`
               : 'Grabar audio de hasta 10 segundos'}
@@ -221,22 +224,22 @@ export const EvidenceScreen = (): ReactElement => {
           multiline
           numberOfLines={5}
           onChangeText={setNote}
-          style={styles.noteInput}
-          contentStyle={styles.noteContent}
-          outlineColor="#D0D0D0"
-          activeOutlineColor={RED}
+          style={estilos.noteInput}
+          contentStyle={estilos.noteContent}
+          outlineColor={tema.colors.border}
+          activeOutlineColor={tema.colors.accentText}
         />
 
         <Pressable
           accessibilityRole="button"
           disabled={uploading}
-          style={({ pressed }) => [styles.sendButton, pressed && styles.pressed]}
+          style={({ pressed }) => [estilos.sendButton, pressed && estilos.pressed]}
           onPress={sendNote}
         >
           {uploading ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={tema.colors.onFill} />
           ) : (
-            <Text style={styles.sendText}>Enviar nota al operador</Text>
+            <Text style={estilos.sendText}>Enviar nota al operador</Text>
           )}
         </Pressable>
       </ScrollView>
@@ -244,14 +247,15 @@ export const EvidenceScreen = (): ReactElement => {
   );
 };
 
-const styles = StyleSheet.create({
+const crearEstilos = (tema: AppTheme) =>
+  StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: tema.colors.surface,
   },
   header: {
     height: 64,
-    backgroundColor: RED,
+    backgroundColor: tema.colors.accentFill,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -266,10 +270,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    color: '#FFFFFF',
+    color: tema.colors.onFill,
     fontSize: 21,
     lineHeight: 26,
-    fontWeight: '800',
+    fontFamily: tema.fuentes.bold,
   },
   content: {
     paddingHorizontal: 26,
@@ -277,16 +281,16 @@ const styles = StyleSheet.create({
     paddingBottom: 38,
   },
   title: {
-    color: '#303030',
+    color: tema.colors.text,
     fontSize: 27,
     lineHeight: 33,
-    fontWeight: '900',
+    fontFamily: tema.fuentes.bold,
     textAlign: 'center',
   },
   subtitle: {
     marginTop: 10,
     marginBottom: 22,
-    color: '#666666',
+    color: tema.colors.textMuted,
     fontSize: 16,
     lineHeight: 22,
     textAlign: 'center',
@@ -296,23 +300,23 @@ const styles = StyleSheet.create({
     marginTop: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E1E1E1',
-    backgroundColor: '#FAFAFA',
+    borderColor: tema.colors.border,
+    backgroundColor: tema.colors.background,
     paddingHorizontal: 18,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
   actionText: {
-    color: '#303030',
+    color: tema.colors.text,
     fontSize: 18,
     lineHeight: 23,
-    fontWeight: '900',
+    fontFamily: tema.fuentes.bold,
   },
   noteInput: {
     marginTop: 22,
     minHeight: 138,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: tema.colors.surface,
   },
   noteContent: {
     fontSize: 17,
@@ -322,7 +326,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
     minHeight: 66,
     borderRadius: 8,
-    backgroundColor: RED,
+    backgroundColor: tema.colors.accentFill,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 6,
@@ -331,9 +335,9 @@ const styles = StyleSheet.create({
     opacity: 0.86,
   },
   sendText: {
-    color: '#FFFFFF',
+    color: tema.colors.onFill,
     fontSize: 19,
     lineHeight: 24,
-    fontWeight: '900',
+    fontFamily: tema.fuentes.bold,
   },
 });

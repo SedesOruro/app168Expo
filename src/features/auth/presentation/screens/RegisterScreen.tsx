@@ -2,7 +2,6 @@ import React, { ReactElement, useMemo, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -11,610 +10,434 @@ import {
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { TextInput } from 'react-native-paper';
+import { useTheme } from 'styled-components/native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useAuth } from '../../../../app/providers/AuthProvider';
-import { BrandStrip } from '../../../emergency/presentation/components/BrandStrip';
+import type { AppTheme } from '../../../../shared/theme';
+import { SeccionAcordeon, type EstadoSeccion } from '../components/SeccionAcordeon';
+import {
+  useBorradorRegistro,
+  type DatosRegistro,
+} from '../hooks/useBorradorRegistro';
 
-const BLUE = '#1F72F2';
-const TEXT = '#2E2E2E';
+type ClaveSeccion = 'personales' | 'acceso' | 'contacto';
 
-type RegistrationData = {
-  names: string;
-  surnames: string;
-  document: string;
-  complement: string;
-  birthDate: string;
-  phone: string;
-  address: string;
-  contactName: string;
-  contactPhone: string;
-  email: string;
-  password: string;
+/** Formato que exige el backend en `birthDate`. */
+const FORMATO_FECHA = /^\d{4}-\d{2}-\d{2}$/;
+
+const esFechaValida = (valor: string): boolean => {
+  if (!FORMATO_FECHA.test(valor)) return false;
+  const fecha = new Date(`${valor}T00:00:00`);
+  return !Number.isNaN(fecha.getTime()) && fecha < new Date();
 };
 
-const initialData: RegistrationData = {
-  names: '',
-  surnames: '',
-  document: '',
-  complement: '',
-  birthDate: '',
-  phone: '',
-  address: '',
-  contactName: '',
-  contactPhone: '',
-  email: '',
-  password: '',
-};
+/** Fecha a AAAA-MM-DD, que es lo que espera el backend en `birthDate`. */
+const aTextoISO = (fecha: Date): string =>
+  `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(
+    fecha.getDate(),
+  ).padStart(2, '0')}`;
+
+/** Fecha que abre el selector cuando aun no hay ninguna elegida. */
+const FECHA_POR_DEFECTO = new Date(1990, 0, 1);
 
 export const RegisterScreen = (): ReactElement => {
-  const { signUp } = useAuth();
-  const [step, setStep] = useState(1);
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [form, setForm] = useState<RegistrationData>(initialData);
-  const [datePickerVisible, setDatePickerVisible] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const { signUp, saltarRegistro } = useAuth();
+  const tema = useTheme() as AppTheme;
+  const estilos = crearEstilos(tema);
+  const { datos, actualizar, limpiar } = useBorradorRegistro();
+  const [terminos, setTerminos] = useState(false);
+  const [abierta, setAbierta] = useState<ClaveSeccion | null>('personales');
+  const [enviando, setEnviando] = useState(false);
+  const [selectorFecha, setSelectorFecha] = useState(false);
 
-  const description = useMemo(
-    () =>
-      step === 3
-        ? 'Proporcione datos de una persona de contacto para llamarlo en caso de emergencias.'
-        : 'Llene el formulario de registro con sus datos personales para comunicarnos con usted en caso de emergencia.',
-    [step],
+  const completas = useMemo(
+    () => ({
+      personales: Boolean(
+        datos.names &&
+          datos.surnames &&
+          datos.document &&
+          esFechaValida(datos.birthDate) &&
+          datos.address,
+      ),
+      acceso: Boolean(
+        datos.phone && datos.email.includes('@') && datos.password.length >= 8,
+      ),
+      contacto: Boolean(datos.contactName && datos.contactPhone && terminos),
+    }),
+    [datos, terminos],
   );
 
-  const setField = (key: keyof RegistrationData, value: string): void => {
-    setForm(current => ({ ...current, [key]: value }));
+  const tocadas = useMemo(
+    () => ({
+      personales: Boolean(
+        datos.names || datos.surnames || datos.document || datos.birthDate || datos.address,
+      ),
+      acceso: Boolean(datos.phone || datos.email || datos.password),
+      contacto: Boolean(datos.contactName || datos.contactPhone || terminos),
+    }),
+    [datos, terminos],
+  );
+
+  const estadoDe = (clave: ClaveSeccion): EstadoSeccion => {
+    if (completas[clave]) return 'completo';
+    return tocadas[clave] ? 'en_curso' : 'sin_empezar';
   };
 
-  const validateStep = (): boolean => {
-    if (step === 1) {
-      return Boolean(form.names && form.surnames && form.document);
-    }
+  const totalCompletas = Object.values(completas).filter(Boolean).length;
+  const listo = totalCompletas === 3;
 
-    if (step === 2) {
-      return Boolean(
-        form.birthDate &&
-          form.phone &&
-          form.address &&
-          form.email &&
-          form.password.length >= 8,
-      );
-    }
-
-    return Boolean(form.contactName && form.contactPhone && acceptedTerms);
+  const alternar = (clave: ClaveSeccion): void => {
+    setAbierta(actual => (actual === clave ? null : clave));
   };
 
-  const onNext = async (): Promise<void> => {
-    if (!validateStep()) {
-      Alert.alert('Datos requeridos', 'Complete los campos obligatorios para continuar.');
-      return;
-    }
+  const campo = (
+    etiqueta: string,
+    clave: keyof DatosRegistro,
+    extra?: Partial<React.ComponentProps<typeof TextInput>>,
+  ): ReactElement => (
+    <TextInput
+      label={etiqueta}
+      mode="outlined"
+      value={datos[clave]}
+      onChangeText={valor => actualizar(clave, valor)}
+      style={estilos.campo}
+      outlineColor={tema.colors.border}
+      activeOutlineColor={tema.colors.primary}
+      {...extra}
+    />
+  );
 
-    if (step < 3) {
-      setStep(current => current + 1);
-      return;
-    }
+  const onRegistrarme = async (): Promise<void> => {
+    if (!listo) return;
 
-    setLoading(true);
+    setEnviando(true);
     try {
-      await signUp({ ...form, acceptedTerms });
+      await signUp({ ...datos, acceptedTerms: terminos });
+      // La cuenta ya existe: el borrador deja de tener sentido y se descarta.
+      await limpiar();
     } catch (error) {
       Alert.alert(
         'No se pudo completar el registro',
         error instanceof Error ? error.message : 'Intente nuevamente.',
       );
     } finally {
-      setLoading(false);
+      setEnviando(false);
     }
   };
 
-  const onSetBirthDate = (): void => {
-    setField('birthDate', '2005-12-31');
-    setDatePickerVisible(false);
-  };
-
   return (
-    <KeyboardAvoidingView
-      style={styles.screen}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <StatusBar barStyle="dark-content" backgroundColor="#F4F7FF" />
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView style={estilos.pantalla}>
+      <StatusBar
+        barStyle={tema.isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={tema.colors.background}
+      />
+      <KeyboardAvoidingView
+        style={estilos.pantalla}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.card}>
-          <BrandStrip />
+        <ScrollView
+          contentContainerStyle={estilos.contenido}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={estilos.rotulo}>REGISTRO UNICO</Text>
+          <Text style={estilos.titulo}>Vamos a conocerte</Text>
+          <Text style={estilos.subtitulo}>
+            Completa las secciones en el orden que prefieras — se guardan solas.
+          </Text>
 
-          <Text style={styles.title}>Registro unico.</Text>
-          <View style={styles.steps}>
-            {[1, 2, 3].map(item => (
-              <React.Fragment key={item}>
-                <View style={[styles.stepCircle, item <= step && styles.stepCircleActive]}>
-                  <Text style={[styles.stepText, item <= step && styles.stepTextActive]}>
-                    {item}
-                  </Text>
-                </View>
-                {item < 3 && <View style={styles.stepLine} />}
-              </React.Fragment>
-            ))}
+          <View style={estilos.barra}>
+            <View
+              style={[estilos.barraRelleno, { width: `${(totalCompletas / 3) * 100}%` }]}
+            />
           </View>
+          <Text style={estilos.progreso}>
+            {totalCompletas} de 3 secciones completas
+          </Text>
 
-          <Text style={styles.description}>{description}</Text>
-
-          {step === 1 && (
-            <>
-              <TextInput
-                label="Nombres*"
-                mode="outlined"
-                value={form.names}
-                onChangeText={value => setField('names', value)}
-                style={styles.input}
-                outlineColor="#222222"
-                activeOutlineColor={BLUE}
-              />
-              <TextInput
-                label="Apellidos*"
-                mode="outlined"
-                value={form.surnames}
-                onChangeText={value => setField('surnames', value)}
-                style={styles.input}
-                outlineColor="#222222"
-                activeOutlineColor={BLUE}
-              />
-              <View style={styles.inlineFields}>
-                <TextInput
-                  label="Cedula de identidad*"
-                  mode="outlined"
-                  value={form.document}
-                  onChangeText={value => setField('document', value)}
-                  keyboardType="numeric"
-                  style={[styles.input, styles.inlineInputWide]}
-                  outlineColor="#222222"
-                  activeOutlineColor={BLUE}
-                />
-                <TextInput
-                  label="Complemento"
-                  mode="outlined"
-                  value={form.complement}
-                  onChangeText={value => setField('complement', value)}
-                  style={[styles.input, styles.inlineInput]}
-                  outlineColor="#222222"
-                  activeOutlineColor={BLUE}
-                />
+          <View style={estilos.secciones}>
+            <SeccionAcordeon
+              numero={1}
+              titulo="Datos personales"
+              estado={estadoDe('personales')}
+              abierta={abierta === 'personales'}
+              onAlternar={() => alternar('personales')}
+            >
+              {campo('Nombres*', 'names')}
+              {campo('Apellidos*', 'surnames')}
+              <View style={estilos.fila}>
+                <View style={estilos.filaAncha}>
+                  {campo('Cedula de identidad*', 'document', {
+                    keyboardType: 'numeric',
+                  })}
+                </View>
+                <View style={estilos.filaEstrecha}>
+                  {campo('Complemento', 'complement')}
+                </View>
               </View>
-            </>
-          )}
-
-          {step === 2 && (
-            <>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Fecha de Nacimiento"
-                onPress={() => setDatePickerVisible(true)}
+                accessibilityLabel={
+                  datos.birthDate
+                    ? `Fecha de nacimiento, ${datos.birthDate}. Tocar para cambiarla`
+                    : 'Elegir fecha de nacimiento'
+                }
+                onPress={() => setSelectorFecha(true)}
               >
+                {/* El TextInput solo muestra; el valor lo fija el selector. */}
                 <View pointerEvents="none">
                   <TextInput
-                    label="Fecha de Nacimiento*"
+                    label="Fecha de nacimiento*"
                     mode="outlined"
-                    value={form.birthDate}
-                    placeholder="AAAA-MM-DD"
-                    style={styles.input}
-                    outlineColor="#222222"
-                    activeOutlineColor={BLUE}
-                    right={<TextInput.Icon icon="calendar" />}
+                    value={datos.birthDate}
+                    placeholder="Elegir fecha"
+                    editable={false}
+                    style={estilos.campo}
+                    outlineColor={tema.colors.border}
+                    activeOutlineColor={tema.colors.primary}
+                    right={
+                      <TextInput.Icon
+                        icon={() => (
+                          <MaterialCommunityIcons
+                            name="calendar"
+                            size={22}
+                            color={tema.colors.textMuted}
+                          />
+                        )}
+                      />
+                    }
                   />
                 </View>
               </Pressable>
-              <TextInput
-                label="Numero de celular*"
-                mode="outlined"
-                value={form.phone}
-                onChangeText={value => setField('phone', value)}
-                keyboardType="phone-pad"
-                style={styles.input}
-                outlineColor="#222222"
-                activeOutlineColor={BLUE}
-              />
-              <TextInput
-                label="Direccion de su domicilio*"
-                mode="outlined"
-                value={form.address}
-                onChangeText={value => setField('address', value)}
-                style={styles.input}
-                outlineColor="#222222"
-                activeOutlineColor={BLUE}
-              />
-              <TextInput
-                label="Correo electronico*"
-                mode="outlined"
-                value={form.email}
-                onChangeText={value => setField('email', value)}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                style={styles.input}
-                outlineColor="#222222"
-                activeOutlineColor={BLUE}
-              />
-              <TextInput
-                label="Contrasena (minimo 8 caracteres)*"
-                mode="outlined"
-                value={form.password}
-                onChangeText={value => setField('password', value)}
-                secureTextEntry
-                style={styles.input}
-                outlineColor="#222222"
-                activeOutlineColor={BLUE}
-              />
-            </>
-          )}
+              {campo('Direccion*', 'address')}
+            </SeccionAcordeon>
 
-          {step === 3 && (
-            <>
-              <TextInput
-                label="Nombre y apellido del contacto*"
-                mode="outlined"
-                value={form.contactName}
-                onChangeText={value => setField('contactName', value)}
-                style={styles.input}
-                outlineColor="#222222"
-                activeOutlineColor={BLUE}
-              />
-              <TextInput
-                label="Numero de celular del contacto*"
-                mode="outlined"
-                value={form.contactPhone}
-                onChangeText={value => setField('contactPhone', value)}
-                keyboardType="phone-pad"
-                style={styles.input}
-                outlineColor="#222222"
-                activeOutlineColor={BLUE}
-              />
+            <SeccionAcordeon
+              numero={2}
+              titulo="Acceso y contacto"
+              estado={estadoDe('acceso')}
+              abierta={abierta === 'acceso'}
+              onAlternar={() => alternar('acceso')}
+            >
+              {campo('Numero de celular*', 'phone', { keyboardType: 'phone-pad' })}
+              {campo('Correo electronico*', 'email', {
+                keyboardType: 'email-address',
+                autoCapitalize: 'none',
+              })}
+              {campo('Contrasena (minimo 8 caracteres)*', 'password', {
+                secureTextEntry: true,
+                autoCapitalize: 'none',
+              })}
+              {datos.password && datos.password.length < 8 ? (
+                <Text style={estilos.error}>La contrasena necesita 8 caracteres.</Text>
+              ) : null}
+            </SeccionAcordeon>
+
+            <SeccionAcordeon
+              numero={3}
+              titulo="Contacto de emergencia"
+              estado={estadoDe('contacto')}
+              abierta={abierta === 'contacto'}
+              onAlternar={() => alternar('contacto')}
+            >
+              {campo('Nombre del contacto*', 'contactName')}
+              {campo('Telefono del contacto*', 'contactPhone', {
+                keyboardType: 'phone-pad',
+              })}
               <Pressable
                 accessibilityRole="checkbox"
-                accessibilityState={{ checked: acceptedTerms }}
-                style={styles.termsRow}
-                onPress={() => setAcceptedTerms(current => !current)}
+                accessibilityState={{ checked: terminos }}
+                onPress={() => setTerminos(actual => !actual)}
+                style={estilos.terminos}
               >
-                <MaterialCommunityIcons
-                  name={acceptedTerms ? 'checkbox-marked' : 'checkbox-blank'}
-                  size={30}
-                  color={acceptedTerms ? BLUE : '#444444'}
-                />
-                <Text style={styles.termsText}>
-                  He leido y acepto los{' '}
-                  <Text style={styles.termsLink}>terminos y condiciones.</Text>
+                <View style={[estilos.casilla, terminos && estilos.casillaMarcada]} />
+                <Text style={estilos.textoTerminos}>
+                  Acepto los terminos y el tratamiento de mis datos para atender
+                  emergencias.
                 </Text>
               </Pressable>
-            </>
-          )}
+            </SeccionAcordeon>
+          </View>
+
+          {selectorFecha ? (
+            <DateTimePicker
+              mode="date"
+              display="spinner"
+              value={
+                esFechaValida(datos.birthDate)
+                  ? new Date(`${datos.birthDate}T00:00:00`)
+                  : FECHA_POR_DEFECTO
+              }
+              maximumDate={new Date()}
+              // onChange quedo deprecado en la v9: onValueChange solo dispara al
+              // aceptar y onDismiss al cancelar, sin tener que mirar el tipo de evento.
+              onValueChange={(_evento, fecha) => {
+                setSelectorFecha(false);
+                if (fecha) {
+                  actualizar('birthDate', aTextoISO(fecha));
+                }
+              }}
+              onDismiss={() => setSelectorFecha(false)}
+            />
+          ) : null}
 
           <Pressable
             accessibilityRole="button"
-            disabled={loading}
+            accessibilityState={{ disabled: !listo || enviando }}
+            disabled={!listo || enviando}
             style={({ pressed }) => [
-              styles.primaryButton,
-              pressed && styles.primaryButtonPressed,
+              estilos.boton,
+              (!listo || enviando) && estilos.botonInactivo,
+              pressed && estilos.presionado,
             ]}
-            onPress={onNext}
+            onPress={() => {
+              onRegistrarme().catch(() => undefined);
+            }}
           >
-            <Text style={styles.primaryButtonText}>
-              {step === 3 ? 'REGISTRARSE' : 'SIGUIENTE'}
+            <Text style={estilos.textoBoton}>
+              {enviando ? 'Registrando...' : 'Registrarme'}
             </Text>
           </Pressable>
-        </View>
-      </ScrollView>
-      <Modal
-        transparent
-        visible={datePickerVisible}
-        animationType="fade"
-        onRequestClose={() => setDatePickerVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.dateDialog}>
-            <View style={styles.dateHeader}>
-              <Text style={styles.dateYear}>2005</Text>
-              <Text style={styles.dateTitle}>Sáb, 31 dic</Text>
-            </View>
-            <View style={styles.calendarBody}>
-              <View style={styles.calendarMonthRow}>
-                <Pressable
-                  accessibilityRole="button"
-                  style={styles.calendarArrow}
-                  onPress={() => undefined}
-                >
-                  <MaterialCommunityIcons name="chevron-left" size={34} color="#222222" />
-                </Pressable>
-                <Text style={styles.calendarMonth}>Diciembre de 2005</Text>
-              </View>
-              <View style={styles.weekRow}>
-                {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((day, index) => (
-                  <Text key={`${day}-${index}`} style={styles.weekDay}>
-                    {day}
-                  </Text>
-                ))}
-              </View>
-              <View style={styles.daysGrid}>
-                {Array.from({ length: 34 }).map((_, index) => {
-                  const day = index < 3 ? '' : String(index - 2);
-                  const isSelected = day === '31';
 
-                  return (
-                    <Pressable
-                      key={`${index}-${day}`}
-                      style={[styles.dayCell, isSelected && styles.daySelected]}
-                      onPress={() => day && setField('birthDate', `2005-12-${day.padStart(2, '0')}`)}
-                    >
-                      <Text style={[styles.dayText, isSelected && styles.dayTextSelected]}>
-                        {day}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              <View style={styles.dateActions}>
-                <Pressable style={styles.dateAction} onPress={onSetBirthDate}>
-                  <Text style={styles.dateActionText}>ESTABLECER</Text>
-                </Pressable>
-                <Pressable
-                  style={styles.dateAction}
-                  onPress={() => setDatePickerVisible(false)}
-                >
-                  <Text style={styles.dateActionText}>CANCELAR</Text>
-                </Pressable>
-                <Pressable
-                  style={styles.dateAction}
-                  onPress={() => {
-                    setField('birthDate', '');
-                    setDatePickerVisible(false);
-                  }}
-                >
-                  <Text style={styles.dateActionText}>BORRAR</Text>
-                </Pressable>
-              </View>
-            </View>
-          </View>
-        </View>
-      </Modal>
-    </KeyboardAvoidingView>
+          {/*
+            Saltar deja recorrer la aplicacion sin cuenta. El boton de emergencia
+            sigue pidiendo el registro al pulsarlo.
+          */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityHint="Explora la aplicacion sin cuenta. Para pedir ayuda tendras que registrarte."
+            disabled={enviando}
+            style={estilos.saltar}
+            onPress={() => {
+              saltarRegistro().catch(() => undefined);
+            }}
+          >
+            <Text style={estilos.textoSaltar}>Saltar registro por ahora</Text>
+          </Pressable>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#2F77F2',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 56,
-    backgroundColor: '#2F77F2',
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    paddingHorizontal: 22,
-    paddingTop: 28,
-    paddingBottom: 26,
-    shadowColor: '#000000',
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 7 },
-    elevation: 7,
-  },
-  title: {
-    marginTop: 28,
-    color: BLUE,
-    fontSize: 32,
-    lineHeight: 38,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  steps: {
-    marginTop: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    borderWidth: 2,
-    borderColor: '#202020',
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepCircleActive: {
-    backgroundColor: BLUE,
-  },
-  stepText: {
-    color: '#222222',
-    fontSize: 24,
-    fontWeight: '800',
-  },
-  stepTextActive: {
-    color: '#FFFFFF',
-  },
-  stepLine: {
-    width: 72,
-    height: 3,
-    marginHorizontal: 16,
-    backgroundColor: '#222222',
-  },
-  description: {
-    marginTop: 24,
-    marginBottom: 12,
-    color: TEXT,
-    fontSize: 22,
-    lineHeight: 28,
-    textAlign: 'center',
-  },
-  input: {
-    marginTop: 10,
-    backgroundColor: '#FFFFFF',
-    minHeight: 64,
-    fontSize: 16,
-  },
-  inlineFields: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  inlineInputWide: {
-    flex: 1.35,
-  },
-  inlineInput: {
-    flex: 1,
-  },
-  termsRow: {
-    marginTop: 12,
-    marginBottom: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  termsText: {
-    flex: 1,
-    color: TEXT,
-    fontSize: 20,
-    lineHeight: 25,
-  },
-  termsLink: {
-    color: '#236FBC',
-    textDecorationLine: 'underline',
-  },
-  primaryButton: {
-    marginTop: 14,
-    minHeight: 64,
-    borderRadius: 4,
-    backgroundColor: BLUE,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 5,
-    shadowColor: '#000000',
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-  },
-  primaryButtonPressed: {
-    opacity: 0.82,
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 21,
-    lineHeight: 25,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.58)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 36,
-  },
-  dateDialog: {
-    width: '100%',
-    maxWidth: 360,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 2,
-    overflow: 'hidden',
-    elevation: 12,
-  },
-  dateHeader: {
-    backgroundColor: '#00917E',
-    paddingHorizontal: 26,
-    paddingTop: 24,
-    paddingBottom: 28,
-  },
-  dateYear: {
-    color: 'rgba(255,255,255,0.72)',
-    fontSize: 20,
-    lineHeight: 25,
-  },
-  dateTitle: {
-    marginTop: 4,
-    color: '#FFFFFF',
-    fontSize: 38,
-    lineHeight: 46,
-    fontWeight: '400',
-  },
-  calendarBody: {
-    paddingHorizontal: 26,
-    paddingTop: 26,
-    paddingBottom: 24,
-  },
-  calendarMonthRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  calendarArrow: {
-    width: 42,
-    height: 42,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  calendarMonth: {
-    flex: 1,
-    color: '#222222',
-    fontSize: 20,
-    lineHeight: 26,
-    textAlign: 'center',
-  },
-  weekRow: {
-    marginTop: 34,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  weekDay: {
-    width: 38,
-    color: '#707070',
-    fontSize: 18,
-    lineHeight: 23,
-    textAlign: 'center',
-  },
-  daysGrid: {
-    marginTop: 18,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  dayCell: {
-    width: '14.285%',
-    height: 42,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  daySelected: {
-    borderRadius: 24,
-    backgroundColor: '#00917E',
-  },
-  dayText: {
-    color: '#2F2F2F',
-    fontSize: 18,
-    lineHeight: 22,
-  },
-  dayTextSelected: {
-    color: '#FFFFFF',
-  },
-  dateActions: {
-    marginTop: 34,
-    alignItems: 'flex-end',
-    gap: 18,
-  },
-  dateAction: {
-    minHeight: 42,
-    justifyContent: 'center',
-  },
-  dateActionText: {
-    color: '#008779',
-    fontSize: 18,
-    lineHeight: 23,
-    fontWeight: '700',
-  },
-});
+const crearEstilos = (tema: AppTheme) =>
+  StyleSheet.create({
+    pantalla: {
+      flex: 1,
+      backgroundColor: tema.colors.background,
+    },
+    contenido: {
+      paddingHorizontal: tema.spacing.xl,
+      paddingTop: tema.spacing.lg,
+      paddingBottom: tema.spacing.xxl,
+    },
+    // primaryDark y no primary: el turquesa claro da 2.76 sobre el fondo y no
+    // llega a AA como texto.
+    rotulo: {
+      ...tema.estilosTexto.caption,
+      color: tema.colors.primaryDark,
+      letterSpacing: 1.2,
+    },
+    titulo: {
+      ...tema.estilosTexto.h1,
+      marginTop: tema.spacing.xs,
+      color: tema.colors.text,
+    },
+    subtitulo: {
+      ...tema.estilosTexto.body,
+      marginTop: tema.spacing.sm,
+      color: tema.colors.textMuted,
+    },
+    barra: {
+      height: 8,
+      marginTop: tema.spacing.xl,
+      borderRadius: tema.radius.pill,
+      backgroundColor: tema.colors.surfaceMuted,
+      overflow: 'hidden',
+    },
+    barraRelleno: {
+      height: '100%',
+      borderRadius: tema.radius.pill,
+      backgroundColor: tema.colors.primaryDark,
+    },
+    progreso: {
+      ...tema.estilosTexto.caption,
+      marginTop: tema.spacing.sm,
+      color: tema.colors.primaryDark,
+    },
+    secciones: {
+      marginTop: tema.spacing.lg,
+      gap: tema.spacing.md,
+    },
+    campo: {
+      backgroundColor: tema.colors.surface,
+    },
+    fila: {
+      flexDirection: 'row',
+      gap: tema.spacing.sm,
+    },
+    filaAncha: {
+      flex: 2,
+    },
+    filaEstrecha: {
+      flex: 1,
+    },
+    error: {
+      ...tema.estilosTexto.caption,
+      color: tema.colors.danger,
+    },
+    terminos: {
+      marginTop: tema.spacing.xs,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: tema.spacing.md,
+    },
+    casilla: {
+      width: 24,
+      height: 24,
+      borderRadius: tema.radius.xs,
+      borderWidth: 2,
+      borderColor: tema.colors.border,
+    },
+    casillaMarcada: {
+      borderColor: tema.colors.primaryDark,
+      backgroundColor: tema.colors.primaryDark,
+    },
+    textoTerminos: {
+      ...tema.estilosTexto.caption,
+      flex: 1,
+      color: tema.colors.textMuted,
+    },
+    boton: {
+      marginTop: tema.spacing.xl,
+      minHeight: 60,
+      borderRadius: tema.radius.md,
+      backgroundColor: tema.colors.primaryDark,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    botonInactivo: {
+      opacity: 0.45,
+    },
+    presionado: {
+      opacity: 0.86,
+    },
+    textoBoton: {
+      ...tema.estilosTexto.h3,
+      color: tema.colors.onFill,
+    },
+    saltar: {
+      marginTop: tema.spacing.md,
+      minHeight: 48,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    textoSaltar: {
+      ...tema.estilosTexto.bodyStrong,
+      color: tema.colors.primaryDark,
+      textDecorationLine: 'underline',
+    },
+  });

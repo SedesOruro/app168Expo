@@ -1,6 +1,8 @@
 import React, { ReactElement } from 'react';
 import { MaterialIcons as MaterialIcon } from '@expo/vector-icons';
-import styled from 'styled-components/native';
+import styled, { useTheme } from 'styled-components/native';
+
+import type { AppTheme } from '../../theme';
 
 type InfoBadgeProps = {
   label: string;
@@ -35,16 +37,20 @@ export const InfoBadge = ({
   label,
   icon,
   tone = 'neutral',
-}: InfoBadgeProps): ReactElement => (
+}: InfoBadgeProps): ReactElement => {
+  const tema = useTheme() as AppTheme;
+
+  return (
   <BadgeContainer $tone={tone} accessibilityLabel={label}>
     {icon ? (
       <MaterialIcon
         name={icon}
         size={16}
-        color="#0AA7A5"
+        color={tema.colors.primary}
         style={{ marginRight: 4 }}
       />
     ) : null}
     <BadgeText>{label}</BadgeText>
   </BadgeContainer>
-);
+  );
+};

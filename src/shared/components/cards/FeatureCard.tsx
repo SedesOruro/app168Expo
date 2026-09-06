@@ -1,7 +1,9 @@
 import React, { ReactElement } from 'react';
 import { ImageSourcePropType } from 'react-native';
 import { MaterialIcons as MaterialIcon } from '@expo/vector-icons';
-import styled from 'styled-components/native';
+import styled, { useTheme } from 'styled-components/native';
+
+import type { AppTheme } from '../../theme';
 
 import { BaseCard } from './BaseCard';
 import { RatingBadge } from '../ui/RatingBadge';
@@ -57,7 +59,10 @@ export const FeatureCard = ({
   meta,
   rating,
   onPress,
-}: FeatureCardProps): ReactElement => (
+}: FeatureCardProps): ReactElement => {
+  const tema = useTheme() as AppTheme;
+
+  return (
   <BaseCard onPress={onPress} accessibilityLabel={title}>
     <Container>
       <Image source={image} resizeMode="cover" />
@@ -66,7 +71,7 @@ export const FeatureCard = ({
           <Title numberOfLines={2}>{title}</Title>
           <Subtitle numberOfLines={1}>{subtitle}</Subtitle>
         </Content>
-        <MaterialIcon name="arrow-forward" size={22} color="#0AA7A5" />
+        <MaterialIcon name="arrow-forward" size={22} color={tema.colors.primary} />
       </Row>
       <Row>
         <Content>{rating ? <RatingBadge value={rating} /> : null}</Content>
@@ -74,4 +79,5 @@ export const FeatureCard = ({
       </Row>
     </Container>
   </BaseCard>
-);
+  );
+};

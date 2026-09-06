@@ -78,7 +78,8 @@
         }
       ],
       "expo-asset",
-      "@maplibre/maplibre-react-native"
+      "@maplibre/maplibre-react-native",
+      "@react-native-community/datetimepicker"
     ]
   }
 }

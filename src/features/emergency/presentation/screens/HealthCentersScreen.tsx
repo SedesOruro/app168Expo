@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from 'styled-components/native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -23,6 +24,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 
 import type { MainStackParamList } from '../../../../app/navigation/types';
+import type { AppTheme } from '../../../../shared/theme';
 import { env } from '../../../../shared/config/env';
 import { BottomTabBar } from '../components/BottomTabBar';
 import { emergencyApi, type Coordinates, type HealthCenter } from '../../data/EmergencyApi';
@@ -33,7 +35,6 @@ type HealthCentersNavigation = NativeStackNavigationProp<
   'HealthCenters'
 >;
 
-const RED = '#F63F5F';
 const ORURO_KM_ZERO: Coordinates = {
   latitude: -17.9695681,
   longitude: -67.1147287,
@@ -51,6 +52,8 @@ const centerCoordinates = (
 };
 
 export const HealthCentersScreen = (): ReactElement => {
+  const tema = useTheme() as AppTheme;
+  const estilos = crearEstilos(tema);
   const navigation = useNavigation<HealthCentersNavigation>();
   const [location, setLocation] = useState<Coordinates | null>(null);
   const [mapReady, setMapReady] = useState(false);
@@ -139,14 +142,14 @@ export const HealthCentersScreen = (): ReactElement => {
   };
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <View style={styles.header}>
-        <Text style={styles.title}>Centros cercanos</Text>
+    <SafeAreaView style={estilos.screen}>
+      <StatusBar barStyle={tema.isDark ? 'light-content' : 'dark-content'} backgroundColor={tema.colors.surface} />
+      <View style={estilos.header}>
+        <Text style={estilos.title}>Centros cercanos</Text>
       </View>
 
       <Map
-        style={styles.map}
+        style={estilos.map}
         mapStyle={env.mapStyleUrl}
         attribution
         attributionPosition={{ bottom: 8, right: 8 }}
@@ -165,8 +168,8 @@ export const HealthCentersScreen = (): ReactElement => {
           lngLat={[ORURO_KM_ZERO.longitude, ORURO_KM_ZERO.latitude]}
           anchor="bottom"
         >
-          <View style={styles.kmZeroMarker}>
-            <MaterialCommunityIcons name="star" size={16} color="#FFFFFF" />
+          <View style={estilos.kmZeroMarker}>
+            <MaterialCommunityIcons name="star" size={16} color={tema.colors.onFill} />
           </View>
         </Marker>
         {location ? (
@@ -174,8 +177,8 @@ export const HealthCentersScreen = (): ReactElement => {
             id="current-location"
             lngLat={[location.longitude, location.latitude]}
           >
-            <View style={styles.currentLocationMarker}>
-              <MaterialCommunityIcons name="crosshairs-gps" size={20} color="#FFFFFF" />
+            <View style={estilos.currentLocationMarker}>
+              <MaterialCommunityIcons name="crosshairs-gps" size={20} color={tema.colors.onFill} />
             </View>
           </Marker>
         ) : null}
@@ -190,31 +193,31 @@ export const HealthCentersScreen = (): ReactElement => {
               anchor="bottom"
               onPress={() => showCenterDetails(center)}
             >
-              <View style={styles.centerMarker}>
-                <MaterialCommunityIcons name="map-marker" size={42} color={RED} />
+              <View style={estilos.centerMarker}>
+                <MaterialCommunityIcons name="map-marker" size={42} color={tema.colors.accentText} />
               </View>
             </Marker>
           );
         })}
       </Map>
 
-      <View style={styles.listPanel}>
+      <View style={estilos.listPanel}>
         {centersQuery.isLoading ? (
-          <ActivityIndicator size="large" color={RED} />
+          <ActivityIndicator size="large" color={tema.colors.accentText} />
         ) : (
           <ScrollView>
             {centers.map(center => (
-              <View key={center.uuid} style={styles.centerRow}>
-                <View style={styles.centerCopy}>
-                  <Text style={styles.centerName}>{center.nombre}</Text>
-                  <Text style={styles.centerMeta}>
+              <View key={center.uuid} style={estilos.centerRow}>
+                <View style={estilos.centerCopy}>
+                  <Text style={estilos.centerName}>{center.nombre}</Text>
+                  <Text style={estilos.centerMeta}>
                     {center.distanceKm != null
                       ? `${center.distanceKm.toFixed(1)} km | `
                       : ''}
                     {center.nivel || center.tipo || center.municipio}
                   </Text>
                   {center.direccion ? (
-                    <Text numberOfLines={1} style={styles.address}>
+                    <Text numberOfLines={1} style={estilos.address}>
                       {center.direccion}
                     </Text>
                   ) : null}
@@ -222,19 +225,19 @@ export const HealthCentersScreen = (): ReactElement => {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={`Como llegar a ${center.nombre}`}
-                  style={styles.iconButton}
+                  style={estilos.iconButton}
                   onPress={() => navigateToCenter(center)}
                 >
                   <MaterialCommunityIcons
                     name="navigation-variant"
                     size={22}
-                    color={RED}
+                    color={tema.colors.accentText}
                   />
                 </Pressable>
               </View>
             ))}
             {!centers.length ? (
-              <Text style={styles.emptyText}>No se encontraron centros de salud.</Text>
+              <Text style={estilos.emptyText}>No se encontraron centros de salud.</Text>
             ) : null}
           </ScrollView>
         )}
@@ -245,16 +248,17 @@ export const HealthCentersScreen = (): ReactElement => {
   );
 };
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#FFFFFF' },
+const crearEstilos = (tema: AppTheme) =>
+  StyleSheet.create({
+  screen: { flex: 1, backgroundColor: tema.colors.surface },
   header: {
     height: 64,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: tema.colors.surface,
     elevation: 5,
   },
-  title: { color: '#2F2F2F', fontSize: 21, lineHeight: 26, fontWeight: '800' },
+  title: { color: tema.colors.text, fontSize: 21, lineHeight: 26, fontFamily: tema.fuentes.bold },
   map: { height: '48%', width: '100%' },
   centerMarker: {
     alignItems: 'center',
@@ -265,8 +269,8 @@ const styles = StyleSheet.create({
     height: 34,
     borderRadius: 17,
     borderWidth: 3,
-    borderColor: '#FFFFFF',
-    backgroundColor: '#1D99CC',
+    borderColor: tema.colors.surface,
+    backgroundColor: tema.mapa.centro,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 4,
@@ -276,8 +280,8 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: 15,
     borderWidth: 3,
-    borderColor: '#FFFFFF',
-    backgroundColor: '#173B72',
+    borderColor: tema.colors.surface,
+    backgroundColor: tema.mapa.usuario,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 5,
@@ -287,27 +291,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingTop: 10,
     paddingBottom: 112,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: tema.colors.surface,
   },
   centerRow: {
     minHeight: 82,
     borderBottomWidth: 1,
-    borderBottomColor: '#ECECEC',
+    borderBottomColor: tema.colors.border,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
   centerCopy: { flex: 1 },
-  centerName: { color: '#303030', fontSize: 17, lineHeight: 22, fontWeight: '900' },
-  centerMeta: { marginTop: 3, color: RED, fontSize: 14, lineHeight: 19, fontWeight: '700' },
-  address: { marginTop: 2, color: '#666666', fontSize: 13, lineHeight: 18 },
+  centerName: { color: tema.colors.text, fontSize: 17, lineHeight: 22, fontFamily: tema.fuentes.bold },
+  centerMeta: { marginTop: 3, color: tema.colors.accentText, fontSize: 14, lineHeight: 19, fontFamily: tema.fuentes.semiBold },
+  address: { marginTop: 2, color: tema.colors.textMuted, fontSize: 13, lineHeight: 18 },
   iconButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#FFE8EC',
+    backgroundColor: tema.colors.dangerSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emptyText: { marginTop: 28, textAlign: 'center', color: '#666666', fontSize: 16 },
+  emptyText: { marginTop: 28, textAlign: 'center', color: tema.colors.textMuted, fontSize: 16 },
 });

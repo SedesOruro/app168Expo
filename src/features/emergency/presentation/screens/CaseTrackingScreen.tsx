@@ -11,12 +11,14 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from 'styled-components/native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 
 import type { MainStackParamList } from '../../../../app/navigation/types';
+import type { AppTheme } from '../../../../shared/theme';
 import { EmergencyFlowSteps } from '../components/EmergencyFlowSteps';
 import { emergencyApi } from '../../data/EmergencyApi';
 import { useEmergencyFlow } from '../providers/EmergencyFlowProvider';
@@ -27,9 +29,10 @@ type CaseTrackingNavigation = NativeStackNavigationProp<
 >;
 type CaseTrackingRoute = RouteProp<MainStackParamList, 'CaseTracking'>;
 
-const RED = '#F63F5F';
 
 export const CaseTrackingScreen = (): ReactElement => {
+  const tema = useTheme() as AppTheme;
+  const estilos = crearEstilos(tema);
   const navigation = useNavigation<CaseTrackingNavigation>();
   const route = useRoute<CaseTrackingRoute>();
   const { currentEmergency, setCurrentEmergency } = useEmergencyFlow();
@@ -56,87 +59,88 @@ export const CaseTrackingScreen = (): ReactElement => {
   };
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar barStyle="light-content" backgroundColor={RED} />
-      <View style={styles.header}>
+    <SafeAreaView style={estilos.screen}>
+      <StatusBar barStyle={tema.isDark ? 'light-content' : 'dark-content'} backgroundColor={tema.colors.accentText} />
+      <View style={estilos.header}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Inicio"
-          style={styles.backButton}
+          style={estilos.backButton}
           onPress={() => navigation.navigate('Dashboard')}
         >
-          <MaterialCommunityIcons name="home" size={30} color="#FFFFFF" />
+          <MaterialCommunityIcons name="home" size={30} color={tema.colors.onFill} />
         </Pressable>
-        <Text style={styles.headerTitle}>Seguimiento del caso</Text>
+        <Text style={estilos.headerTitle}>Seguimiento del caso</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={estilos.content}>
         <EmergencyFlowSteps activeStep={6} />
 
-        {!emergency && query.isLoading ? <ActivityIndicator size="large" color={RED} /> : null}
-        <View style={styles.successIcon}>
-          <MaterialCommunityIcons name="check-bold" size={48} color="#FFFFFF" />
+        {!emergency && query.isLoading ? <ActivityIndicator size="large" color={tema.colors.accentText} /> : null}
+        <View style={estilos.successIcon}>
+          <MaterialCommunityIcons name="check-bold" size={48} color={tema.colors.onFill} />
         </View>
-        <Text style={styles.title}>
+        <Text style={estilos.title}>
           {emergency?.estado?.es_final ? 'Atencion concluida' : 'Emergencia en seguimiento'}
         </Text>
-        <Text style={styles.code}>Codigo: {emergency?.codigo_publico ?? 'Sin registro'}</Text>
+        <Text style={estilos.code}>Codigo: {emergency?.codigo_publico ?? 'Sin registro'}</Text>
 
-        <View style={styles.timelineCard}>
-          <Text style={styles.sectionTitle}>Estado en tiempo real</Text>
+        <View style={estilos.timelineCard}>
+          <Text style={estilos.sectionTitle}>Estado en tiempo real</Text>
           {(emergency?.historial ?? []).map((item, index, history) => (
-            <View key={item.id} style={styles.timelineRow}>
-              <View style={styles.timelineMarkerWrap}>
-                <View style={[styles.dot, styles.dotDone]} />
-                {index < history.length - 1 ? <View style={styles.line} /> : null}
+            <View key={item.id} style={estilos.timelineRow}>
+              <View style={estilos.timelineMarkerWrap}>
+                <View style={[estilos.dot, estilos.dotDone]} />
+                {index < history.length - 1 ? <View style={estilos.line} /> : null}
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.timelineText, styles.timelineTextDone]}>
+                <Text style={[estilos.timelineText, estilos.timelineTextDone]}>
                   {item.estadoNuevo?.nombre ?? 'Actualizacion'}
                 </Text>
-                <Text style={styles.timelineDate}>
+                <Text style={estilos.timelineDate}>
                   {new Date(item.created_at).toLocaleString()}
                 </Text>
               </View>
             </View>
           ))}
           {!emergency?.historial?.length ? (
-            <Text style={styles.timelineText}>Esperando actualizaciones de la central.</Text>
+            <Text style={estilos.timelineText}>Esperando actualizaciones de la central.</Text>
           ) : null}
         </View>
 
         <Pressable
           accessibilityRole="button"
-          style={({ pressed }) => [styles.operatorButton, pressed && styles.pressed]}
+          style={({ pressed }) => [estilos.operatorButton, pressed && estilos.pressed]}
           onPress={callOperator}
         >
-          <MaterialCommunityIcons name="phone" size={24} color="#FFFFFF" />
-          <Text style={styles.operatorText}>LLAMAR OPERADOR</Text>
+          <MaterialCommunityIcons name="phone" size={24} color={tema.colors.onFill} />
+          <Text style={estilos.operatorText}>LLAMAR OPERADOR</Text>
         </Pressable>
 
         <Pressable
           accessibilityRole="button"
-          style={styles.secondaryButton}
+          style={estilos.secondaryButton}
           onPress={() =>
             navigation.navigate('Evidence', { emergencyUuid: emergency?.uuid })
           }
         >
-          <MaterialCommunityIcons name="camera-plus" size={24} color={RED} />
-          <Text style={styles.secondaryText}>Agregar evidencia opcional</Text>
+          <MaterialCommunityIcons name="camera-plus" size={24} color={tema.colors.accentText} />
+          <Text style={estilos.secondaryText}>Agregar evidencia opcional</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
+const crearEstilos = (tema: AppTheme) =>
+  StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: tema.colors.surface,
   },
   header: {
     height: 64,
-    backgroundColor: RED,
+    backgroundColor: tema.colors.accentFill,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -151,10 +155,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    color: '#FFFFFF',
+    color: tema.colors.onFill,
     fontSize: 21,
     lineHeight: 26,
-    fontWeight: '800',
+    fontFamily: tema.fuentes.bold,
   },
   content: {
     paddingHorizontal: 26,
@@ -166,40 +170,40 @@ const styles = StyleSheet.create({
     width: 86,
     height: 86,
     borderRadius: 43,
-    backgroundColor: '#138A49',
+    backgroundColor: tema.colors.success,
     alignItems: 'center',
     justifyContent: 'center',
   },
   title: {
     marginTop: 22,
-    color: '#303030',
+    color: tema.colors.text,
     fontSize: 25,
     lineHeight: 31,
-    fontWeight: '900',
+    fontFamily: tema.fuentes.bold,
     textAlign: 'center',
   },
   code: {
     marginTop: 8,
-    color: RED,
+    color: tema.colors.accentText,
     fontSize: 17,
     lineHeight: 22,
-    fontWeight: '900',
+    fontFamily: tema.fuentes.bold,
   },
   timelineCard: {
     width: '100%',
     marginTop: 30,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E1E1E1',
+    borderColor: tema.colors.border,
     paddingHorizontal: 22,
     paddingVertical: 22,
   },
   sectionTitle: {
     marginBottom: 18,
-    color: '#303030',
+    color: tema.colors.text,
     fontSize: 19,
     lineHeight: 25,
-    fontWeight: '900',
+    fontFamily: tema.fuentes.bold,
   },
   timelineRow: {
     minHeight: 54,
@@ -215,32 +219,32 @@ const styles = StyleSheet.create({
     height: 16,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#8C8C8C',
-    backgroundColor: '#FFFFFF',
+    borderColor: tema.colors.border,
+    backgroundColor: tema.colors.surface,
   },
   dotDone: {
-    borderColor: RED,
-    backgroundColor: RED,
+    borderColor: tema.colors.accentFill,
+    backgroundColor: tema.colors.accentFill,
   },
   line: {
     width: 2,
     flex: 1,
-    backgroundColor: '#D6D6D6',
+    backgroundColor: tema.colors.border,
   },
   timelineText: {
     flex: 1,
-    color: '#6A6A6A',
+    color: tema.colors.textMuted,
     fontSize: 18,
     lineHeight: 23,
-    fontWeight: '700',
+    fontFamily: tema.fuentes.semiBold,
   },
   timelineTextDone: {
-    color: '#303030',
-    fontWeight: '900',
+    color: tema.colors.text,
+    fontFamily: tema.fuentes.bold,
   },
   timelineDate: {
     marginTop: 3,
-    color: '#777777',
+    color: tema.colors.textMuted,
     fontSize: 13,
     lineHeight: 18,
   },
@@ -249,7 +253,7 @@ const styles = StyleSheet.create({
     marginTop: 30,
     minHeight: 66,
     borderRadius: 8,
-    backgroundColor: RED,
+    backgroundColor: tema.colors.accentFill,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -260,10 +264,10 @@ const styles = StyleSheet.create({
     opacity: 0.86,
   },
   operatorText: {
-    color: '#FFFFFF',
+    color: tema.colors.onFill,
     fontSize: 18,
     lineHeight: 23,
-    fontWeight: '900',
+    fontFamily: tema.fuentes.bold,
   },
   secondaryButton: {
     width: '100%',
@@ -271,16 +275,16 @@ const styles = StyleSheet.create({
     minHeight: 58,
     borderRadius: 8,
     borderWidth: 1.2,
-    borderColor: RED,
+    borderColor: tema.colors.accentText,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
     gap: 10,
   },
   secondaryText: {
-    color: RED,
+    color: tema.colors.accentText,
     fontSize: 17,
     lineHeight: 22,
-    fontWeight: '900',
+    fontFamily: tema.fuentes.bold,
   },
 });

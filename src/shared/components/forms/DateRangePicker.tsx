@@ -1,7 +1,9 @@
 import React, { ReactElement, useMemo, useState } from 'react';
 import { Modal } from 'react-native';
 import { MaterialIcons as MaterialIcon } from '@expo/vector-icons';
-import styled from 'styled-components/native';
+import styled, { useTheme } from 'styled-components/native';
+
+import type { AppTheme } from '../../theme';
 
 import { PrimaryButton } from '../buttons/PrimaryButton';
 import type { DateRange } from '../../types/filters';
@@ -126,6 +128,7 @@ export const DateRangePicker = ({
   onChange,
   onClose,
 }: DateRangePickerProps): ReactElement => {
+  const tema = useTheme() as AppTheme;
   const initialMonth = value.startDate ?? minimumDate ?? new Date();
   const [visibleMonth, setVisibleMonth] = useState(startOfDay(initialMonth));
   const [draftRange, setDraftRange] = useState<DateRange>(value);
@@ -174,7 +177,7 @@ export const DateRangePicker = ({
               accessibilityLabel="Previous month"
               onPress={() => moveMonth(-1)}
             >
-              <MaterialIcon name="chevron-left" size={26} color="#0AA7A5" />
+              <MaterialIcon name="chevron-left" size={26} color={tema.colors.primary} />
             </MonthButton>
             <MonthTitle>{getMonthLabel(visibleMonth)}</MonthTitle>
             <MonthButton
@@ -182,7 +185,7 @@ export const DateRangePicker = ({
               accessibilityLabel="Next month"
               onPress={() => moveMonth(1)}
             >
-              <MaterialIcon name="chevron-right" size={26} color="#0AA7A5" />
+              <MaterialIcon name="chevron-right" size={26} color={tema.colors.primary} />
             </MonthButton>
           </Header>
 

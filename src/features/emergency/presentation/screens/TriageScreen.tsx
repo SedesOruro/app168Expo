@@ -10,11 +10,13 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from 'styled-components/native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import type { MainStackParamList } from '../../../../app/navigation/types';
+import type { AppTheme } from '../../../../shared/theme';
 import { EmergencyFlowSteps } from '../components/EmergencyFlowSteps';
 import { emergencyApi } from '../../data/EmergencyApi';
 import { getCurrentCoordinates } from '../../data/locationService';
@@ -22,7 +24,6 @@ import { useEmergencyFlow } from '../providers/EmergencyFlowProvider';
 
 type TriageNavigation = NativeStackNavigationProp<MainStackParamList, 'Triage'>;
 
-const RED = '#F63F5F';
 
 const triageQuestions = [
   { key: 'breathing', label: 'La persona respira?', options: ['Si', 'No', 'No se'] },
@@ -31,6 +32,8 @@ const triageQuestions = [
 ];
 
 export const TriageScreen = (): ReactElement => {
+  const tema = useTheme() as AppTheme;
+  const estilos = crearEstilos(tema);
   const navigation = useNavigation<TriageNavigation>();
   const { draft, updateDraft, setCurrentEmergency } = useEmergencyFlow();
   const [submitting, setSubmitting] = useState(false);
@@ -77,29 +80,29 @@ export const TriageScreen = (): ReactElement => {
   };
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar barStyle="light-content" backgroundColor={RED} />
-      <View style={styles.header}>
+    <SafeAreaView style={estilos.screen}>
+      <StatusBar barStyle={tema.isDark ? 'light-content' : 'dark-content'} backgroundColor={tema.colors.accentText} />
+      <View style={estilos.header}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Volver"
-          style={styles.backButton}
+          style={estilos.backButton}
           onPress={() => navigation.goBack()}
         >
-          <MaterialCommunityIcons name="arrow-left" size={32} color="#FFFFFF" />
+          <MaterialCommunityIcons name="arrow-left" size={32} color={tema.colors.onFill} />
         </Pressable>
-        <Text style={styles.headerTitle}>Triage rapido</Text>
+        <Text style={estilos.headerTitle}>Triage rapido</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={estilos.content}>
         <EmergencyFlowSteps activeStep={4} />
 
-        <Text style={styles.intro}>Datos minimos de salud y riesgo</Text>
+        <Text style={estilos.intro}>Datos minimos de salud y riesgo</Text>
 
         {triageQuestions.map(question => (
-          <View key={question.key} style={styles.questionBlock}>
-            <Text style={styles.question}>{question.label}</Text>
-            <View style={styles.optionRow}>
+          <View key={question.key} style={estilos.questionBlock}>
+            <Text style={estilos.question}>{question.label}</Text>
+            <View style={estilos.optionRow}>
               {question.options.map(option => {
                 const isActive = answers[question.key] === option;
 
@@ -107,11 +110,11 @@ export const TriageScreen = (): ReactElement => {
                   <Pressable
                     key={option}
                     accessibilityRole="button"
-                    style={[styles.optionButton, isActive && styles.optionButtonActive]}
+                    style={[estilos.optionButton, isActive && estilos.optionButtonActive]}
                     onPress={() => setAnswer(question.key, option)}
                   >
                     <Text
-                      style={[styles.optionText, isActive && styles.optionTextActive]}
+                      style={[estilos.optionText, isActive && estilos.optionTextActive]}
                     >
                       {option}
                     </Text>
@@ -125,15 +128,15 @@ export const TriageScreen = (): ReactElement => {
         <Pressable
           accessibilityRole="button"
           disabled={submitting}
-          style={({ pressed }) => [styles.sendButton, pressed && styles.pressed]}
+          style={({ pressed }) => [estilos.sendButton, pressed && estilos.pressed]}
           onPress={onSubmit}
         >
           {submitting ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={tema.colors.onFill} />
           ) : (
             <>
-              <MaterialCommunityIcons name="send" size={24} color="#FFFFFF" />
-              <Text style={styles.sendText}>Enviar ahora</Text>
+              <MaterialCommunityIcons name="send" size={24} color={tema.colors.onFill} />
+              <Text style={estilos.sendText}>Enviar ahora</Text>
             </>
           )}
         </Pressable>
@@ -142,14 +145,15 @@ export const TriageScreen = (): ReactElement => {
   );
 };
 
-const styles = StyleSheet.create({
+const crearEstilos = (tema: AppTheme) =>
+  StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: tema.colors.surface,
   },
   header: {
     height: 64,
-    backgroundColor: RED,
+    backgroundColor: tema.colors.accentFill,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -164,10 +168,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    color: '#FFFFFF',
+    color: tema.colors.onFill,
     fontSize: 21,
     lineHeight: 26,
-    fontWeight: '800',
+    fontFamily: tema.fuentes.bold,
   },
   content: {
     paddingHorizontal: 24,
@@ -175,20 +179,20 @@ const styles = StyleSheet.create({
     paddingBottom: 38,
   },
   intro: {
-    color: RED,
+    color: tema.colors.accentText,
     fontSize: 24,
     lineHeight: 30,
-    fontWeight: '900',
+    fontFamily: tema.fuentes.bold,
     textAlign: 'center',
   },
   questionBlock: {
     marginTop: 30,
   },
   question: {
-    color: '#303030',
+    color: tema.colors.text,
     fontSize: 21,
     lineHeight: 27,
-    fontWeight: '900',
+    fontFamily: tema.fuentes.bold,
   },
   optionRow: {
     marginTop: 14,
@@ -200,29 +204,29 @@ const styles = StyleSheet.create({
     minHeight: 58,
     borderRadius: 8,
     borderWidth: 1.2,
-    borderColor: RED,
+    borderColor: tema.colors.accentText,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 8,
   },
   optionButtonActive: {
-    backgroundColor: RED,
+    backgroundColor: tema.colors.accentFill,
   },
   optionText: {
-    color: RED,
+    color: tema.colors.accentText,
     fontSize: 16,
     lineHeight: 21,
-    fontWeight: '900',
+    fontFamily: tema.fuentes.bold,
     textAlign: 'center',
   },
   optionTextActive: {
-    color: '#FFFFFF',
+    color: tema.colors.onFill,
   },
   sendButton: {
     marginTop: 38,
     minHeight: 68,
     borderRadius: 8,
-    backgroundColor: RED,
+    backgroundColor: tema.colors.accentFill,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -233,9 +237,9 @@ const styles = StyleSheet.create({
     opacity: 0.86,
   },
   sendText: {
-    color: '#FFFFFF',
+    color: tema.colors.onFill,
     fontSize: 20,
     lineHeight: 25,
-    fontWeight: '900',
+    fontFamily: tema.fuentes.bold,
   },
 });

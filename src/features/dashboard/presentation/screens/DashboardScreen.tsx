@@ -1,4 +1,3 @@
-import { institucion } from '../../../../shared/constants/institucion';
 import React, { ReactElement } from 'react';
 import {
   Pressable,
@@ -12,10 +11,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTheme } from 'styled-components/native';
 
 import type { MainStackParamList } from '../../../../app/navigation/types';
-import { BrandStrip } from '../../../emergency/presentation/components/BrandStrip';
+import type { AppTheme } from '../../../../shared/theme';
 import { BottomTabBar } from '../../../emergency/presentation/components/BottomTabBar';
+import { CirculoSos } from '../../../emergency/presentation/components/CirculoSos';
 import { EmergencyFlowSteps } from '../../../emergency/presentation/components/EmergencyFlowSteps';
 import { useAuth } from '../../../../app/providers/AuthProvider';
 
@@ -24,88 +25,115 @@ type DashboardNavigation = NativeStackNavigationProp<
   'Dashboard'
 >;
 
-const RED = '#F63F5F';
-const DARK = '#272727';
-
-const quickActions = [
-  { icon: 'ambulance', label: 'Ambulancia' },
-  { icon: 'fire-truck', label: 'Bomberos' },
-  { icon: 'police-badge', label: 'Policia' },
-  { icon: 'dots-horizontal-circle', label: 'Otro' },
+const accesosRapidos = [
+  { icon: 'ambulance', label: 'Ambulancia', tono: 'danger' },
+  { icon: 'fire', label: 'Bomberos', tono: 'warning' },
+  { icon: 'police-badge', label: 'Policia', tono: 'secondary' },
+  { icon: 'dots-horizontal', label: 'Otro', tono: 'textMuted' },
 ] as const;
 
 export const DashboardScreen = (): ReactElement => {
   const navigation = useNavigation<DashboardNavigation>();
-  const { user } = useAuth();
+  const { user, status, pedirRegistro } = useAuth();
+  const tema = useTheme() as AppTheme;
+  const estilos = crearEstilos(tema);
+  const registrado = status === 'authenticated';
+
+  /**
+   * Sin cuenta no se puede emitir una alerta: la Central necesita saber a quien
+   * atiende y a que numero devolver la llamada. Al pulsar se sale del modo
+   * exploracion, con lo que RootNavigator devuelve al formulario de registro.
+   */
+  const irAEmergencia = (destino: () => void): void => {
+    if (!registrado) {
+      pedirRegistro().catch(() => undefined);
+      return;
+    }
+    destino();
+  };
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.brandWrap}>
-          <BrandStrip />
-        </View>
-
-        <View style={styles.topStatus}>
-          <Text style={styles.greeting}>
-            Hola, {user?.name?.split(' ')[0] || 'ciudadano'}
-          </Text>
-          <View style={styles.gpsBadge}>
-            <MaterialCommunityIcons name="crosshairs-gps" size={18} color="#138A49" />
-            <Text style={styles.gpsText}>GPS al enviar</Text>
+    <SafeAreaView style={estilos.pantalla}>
+      <StatusBar
+        barStyle={tema.isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={tema.colors.background}
+      />
+      <ScrollView contentContainerStyle={estilos.contenido}>
+        <View style={estilos.estadoSuperior}>
+          <View style={estilos.bloqueUbicacion}>
+            <Text style={estilos.rotuloUbicacion}>Ubicacion actual</Text>
+            <View style={estilos.filaUbicacion}>
+              <MaterialCommunityIcons
+                name="map-marker"
+                size={18}
+                color={tema.colors.accentText}
+              />
+              <Text style={estilos.textoUbicacion} numberOfLines={1}>
+                Se comparte al enviar la alerta
+              </Text>
+            </View>
           </View>
+          <Text style={estilos.saludo} numberOfLines={1}>
+            {user?.name?.split(' ')[0] || 'Visitante'}
+          </Text>
         </View>
 
-        <Text style={styles.title}>Centro de emergencias 168</Text>
-        <Text style={styles.subtitle}>
-          Pedir ayuda en maximo 2 taps. Atiende {institucion.sigla}.
+        <Text style={estilos.titulo}>Centro de emergencias 168</Text>
+        <Text style={estilos.subtitulo}>
+          {registrado
+            ? 'Pedir ayuda en maximo 2 taps.'
+            : 'Estas explorando la aplicacion. Para pedir ayuda hay que registrarse.'}
         </Text>
 
-        <View style={styles.flowWrap}>
+        <View style={estilos.envoltorioPasos}>
           <EmergencyFlowSteps activeStep={1} />
         </View>
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Linea gratuita 168"
-          style={({ pressed }) => [styles.ringButton, pressed && styles.pressed]}
-          onPress={() => navigation.navigate('Emergency', { flow: 'direct' })}
-        >
-          <View style={styles.ringOuter}>
-            <View style={styles.ringMiddle}>
-              <View style={styles.ringInner}>
-                <Text style={styles.number}>168</Text>
-                <Text style={styles.freeLine}>EMERGENCIA</Text>
-              </View>
-            </View>
-          </View>
-        </Pressable>
+        <CirculoSos
+          onPress={() =>
+            irAEmergencia(() =>
+              navigation.navigate('Emergency', { flow: 'direct' }),
+            )
+          }
+        />
 
-        <Text style={styles.choiceText}>Accesos rapidos</Text>
+        <Text style={estilos.textoEleccion}>Accesos rapidos</Text>
 
-        <View style={styles.options}>
-          {quickActions.map(action => (
+        <View style={estilos.opciones}>
+          {accesosRapidos.map(acceso => (
             <Pressable
-              key={action.label}
+              key={acceso.label}
               accessibilityRole="button"
-              accessibilityLabel={action.label}
-              style={styles.optionCard}
+              accessibilityLabel={acceso.label}
+              style={({ pressed }) => [estilos.chip, pressed && estilos.presionado]}
               onPress={() =>
-                navigation.navigate('Emergency', {
-                  flow: 'guided',
-                  quickAccess: action.label,
-                })
+                irAEmergencia(() =>
+                  navigation.navigate('Emergency', {
+                    flow: 'guided',
+                    quickAccess: acceso.label,
+                  }),
+                )
               }
             >
-              <MaterialCommunityIcons name={action.icon} size={44} color={RED} />
-              <Text style={styles.optionText}>{action.label}</Text>
+              <View style={estilos.circuloIcono}>
+                <MaterialCommunityIcons
+                  name={acceso.icon}
+                  size={18}
+                  color={tema.colors[acceso.tono]}
+                />
+              </View>
+              <Text style={estilos.textoChip}>{acceso.label}</Text>
             </Pressable>
           ))}
         </View>
 
-        <View style={styles.readyPanel}>
-          <MaterialCommunityIcons name="check-circle" size={24} color="#138A49" />
-          <Text style={styles.readyText}>Estado: Listo para enviar</Text>
+        <View style={estilos.panelListo}>
+          <MaterialCommunityIcons
+            name="check-circle"
+            size={24}
+            color={tema.colors.success}
+          />
+          <Text style={estilos.textoListo}>Estado: Listo para enviar</Text>
         </View>
       </ScrollView>
 
@@ -114,167 +142,117 @@ export const DashboardScreen = (): ReactElement => {
   );
 };
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  content: {
-    paddingHorizontal: 28,
-    paddingTop: 30,
-    paddingBottom: 128,
-    alignItems: 'center',
-  },
-  brandWrap: {
-    width: '100%',
-    paddingHorizontal: 8,
-    marginBottom: 28,
-  },
-  topStatus: {
-    width: '100%',
-    marginBottom: 22,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  greeting: {
-    color: DARK,
-    fontSize: 20,
-    lineHeight: 26,
-    fontWeight: '800',
-  },
-  gpsBadge: {
-    minHeight: 36,
-    borderRadius: 18,
-    backgroundColor: '#EAF8EF',
-    borderWidth: 1,
-    borderColor: '#BFE6CC',
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  gpsText: {
-    color: '#138A49',
-    fontSize: 14,
-    lineHeight: 18,
-    fontWeight: '900',
-  },
-  title: {
-    color: RED,
-    fontSize: 28,
-    lineHeight: 34,
-    fontWeight: '900',
-    textAlign: 'center',
-  },
-  subtitle: {
-    marginTop: 10,
-    color: '#333333',
-    fontSize: 18,
-    lineHeight: 24,
-    textAlign: 'center',
-  },
-  flowWrap: {
-    width: '100%',
-    marginTop: 22,
-  },
-  ringButton: {
-    marginTop: 2,
-  },
-  pressed: {
-    opacity: 0.88,
-  },
-  ringOuter: {
-    width: 286,
-    height: 286,
-    borderRadius: 143,
-    backgroundColor: '#FFE8EC',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ringMiddle: {
-    width: 248,
-    height: 248,
-    borderRadius: 124,
-    backgroundColor: '#FF9AAE',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ringInner: {
-    width: 178,
-    height: 178,
-    borderRadius: 89,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 42,
-    borderColor: RED,
-  },
-  number: {
-    color: RED,
-    fontSize: 42,
-    lineHeight: 48,
-    fontWeight: '900',
-  },
-  freeLine: {
-    marginTop: 4,
-    color: '#666666',
-    fontSize: 15,
-    lineHeight: 19,
-    textAlign: 'center',
-    fontWeight: '900',
-  },
-  choiceText: {
-    marginTop: 30,
-    color: '#333333',
-    fontSize: 20,
-    lineHeight: 25,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  options: {
-    width: '100%',
-    marginTop: 18,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  optionCard: {
-    width: '48%',
-    minHeight: 92,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#CFCFCF',
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 10,
-    gap: 8,
-  },
-  optionText: {
-    color: RED,
-    fontSize: 17,
-    lineHeight: 22,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  readyPanel: {
-    width: '100%',
-    marginTop: 22,
-    minHeight: 54,
-    borderRadius: 8,
-    backgroundColor: '#F4F4F4',
-    borderWidth: 1,
-    borderColor: '#E1E1E1',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  readyText: {
-    color: '#343434',
-    fontSize: 17,
-    lineHeight: 22,
-    fontWeight: '800',
-  },
-});
+const crearEstilos = (tema: AppTheme) =>
+  StyleSheet.create({
+    pantalla: {
+      flex: 1,
+      backgroundColor: tema.colors.background,
+    },
+    contenido: {
+      paddingHorizontal: tema.spacing.xl,
+      paddingTop: tema.spacing.xl,
+      paddingBottom: 128,
+      alignItems: 'center',
+    },
+    estadoSuperior: {
+      width: '100%',
+      marginBottom: tema.spacing.xl,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    bloqueUbicacion: {
+      flexShrink: 1,
+    },
+    rotuloUbicacion: {
+      ...tema.estilosTexto.caption,
+      color: tema.colors.textMuted,
+    },
+    filaUbicacion: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: tema.spacing.xs,
+    },
+    textoUbicacion: {
+      ...tema.estilosTexto.bodyStrong,
+      flexShrink: 1,
+      color: tema.colors.text,
+    },
+    saludo: {
+      ...tema.estilosTexto.bodyStrong,
+      color: tema.colors.textMuted,
+    },
+    titulo: {
+      ...tema.estilosTexto.h1,
+      color: tema.colors.text,
+      textAlign: 'center',
+    },
+    subtitulo: {
+      ...tema.estilosTexto.body,
+      marginTop: tema.spacing.sm,
+      color: tema.colors.textMuted,
+      textAlign: 'center',
+    },
+    envoltorioPasos: {
+      width: '100%',
+      marginTop: tema.spacing.xl,
+    },
+    presionado: {
+      opacity: 0.88,
+    },
+    textoEleccion: {
+      ...tema.estilosTexto.h3,
+      width: '100%',
+      marginTop: tema.spacing.xl,
+      color: tema.colors.text,
+    },
+    opciones: {
+      width: '100%',
+      marginTop: tema.spacing.lg,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: tema.spacing.sm,
+    },
+    chip: {
+      minHeight: 44,
+      borderRadius: tema.radius.pill,
+      borderWidth: 1,
+      borderColor: tema.colors.border,
+      backgroundColor: tema.colors.surface,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingLeft: tema.spacing.xs,
+      paddingRight: tema.spacing.lg,
+      gap: tema.spacing.sm,
+    },
+    circuloIcono: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: tema.colors.surfaceMuted,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    textoChip: {
+      ...tema.estilosTexto.bodyStrong,
+      fontSize: 14,
+      color: tema.colors.text,
+    },
+    panelListo: {
+      width: '100%',
+      marginTop: tema.spacing.xl,
+      minHeight: 54,
+      borderRadius: tema.radius.md,
+      backgroundColor: tema.colors.surfaceMuted,
+      borderWidth: 1,
+      borderColor: tema.colors.border,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: tema.spacing.sm,
+    },
+    textoListo: {
+      ...tema.estilosTexto.bodyStrong,
+      color: tema.colors.text,
+    },
+  });
