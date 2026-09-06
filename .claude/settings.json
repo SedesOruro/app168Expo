@@ -2,6 +2,38 @@
   "enabledPlugins": {
     "expo@claude-plugins-official": true
   },
+  "permissions": {
+    "allow": [
+      "Bash(npm run typecheck:*)",
+      "Bash(npm --prefix backend run typecheck:*)",
+      "Bash(npm --prefix admin run typecheck:*)",
+      "Bash(npm test:*)",
+      "Bash(npm --prefix backend run lint:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(find:*)",
+      "Bash(netstat:*)"
+    ],
+    "deny": [
+      "Read(./node_modules/**)",
+      "Read(./android/**)",
+      "Read(./.expo/**)",
+      "Read(./assets/**)",
+      "Read(./src/shared/assets/**)",
+      "Read(./graphify-out/graph.json)",
+      "Read(./graphify-out/graph.html)",
+      "Read(./package-lock.json)",
+      "Read(./backend/package-lock.json)",
+      "Read(./admin/package-lock.json)"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {
@@ -9,7 +41,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "graphify hook-guard search"
+            "command": "\"C:/Users/SUSAN/AppData/Local/Python/pythoncore-3.14-64/Scripts/graphify.exe\" hook-guard search"
           }
         ]
       },
@@ -18,7 +50,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "graphify hook-guard read --strict"
+            "command": "\"C:/Users/SUSAN/AppData/Local/Python/pythoncore-3.14-64/Scripts/graphify.exe\" hook-guard read --strict"
           }
         ]
       }

@@ -46,3 +46,6 @@ backend/uploads/
 # generated native folders
 /ios
 /android
+
+# graphify knowledge graph (regenerable: /graphify .)
+graphify-out/

@@ -1,0 +1,17 @@
+# Qué queda fuera del grafo de conocimiento, y por qué.
+# Sintaxis de .gitignore. Sin esto, cada `graphify update .` vuelve a meter todo.
+
+# Documentación del propio tooling: describe a graphify, no a este proyecto.
+.claude/
+
+# Assets binarios: iconos, splash screens y fotos de stock. No aportan nada a un grafo
+# de código y extraerlos por visión cuesta un subagente con visión por imagen.
+assets/
+src/shared/assets/
+
+# Artefactos de máquina y dependencias.
+node_modules/
+android/
+.expo/
+package-lock.json
+graphify-out/
