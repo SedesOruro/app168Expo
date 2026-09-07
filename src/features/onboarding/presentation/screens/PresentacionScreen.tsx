@@ -63,10 +63,10 @@ export const PresentacionScreen = ({
         <View style={estilos.centro}>
           <View style={estilos.placaCentral}>
             <Image
-              source={logosInstitucionales.coordinacionRedes.fuente}
+              source={logosInstitucionales.ccesd.fuente}
               style={estilos.selloCentral}
               resizeMode="contain"
-              accessibilityLabel={logosInstitucionales.coordinacionRedes.titulo}
+              accessibilityLabel={logosInstitucionales.ccesd.titulo}
             />
           </View>
 

@@ -55,7 +55,8 @@
     "test": "jest",
     "test:ci": "jest --runInBand",
     "typecheck": "tsc --noEmit",
-    "doctor": "npx expo-doctor"
+    "doctor": "npx expo-doctor",
+    "verificar-entorno": "node scripts/verificar-entorno.mjs"
   },
   "engines": {
     "node": ">=22.13.0"

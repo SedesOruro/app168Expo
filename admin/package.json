@@ -8,9 +8,10 @@
     "local": "vite",
     "dev": "vite",
     "start": "vite preview",
-    "build": "vite build",
+    "build": "node scripts/verificar-entorno.mjs && vite build",
     "test": "vitest run --passWithNoTests --environment jsdom",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "verificar-entorno": "node scripts/verificar-entorno.mjs"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

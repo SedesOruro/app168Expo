@@ -9,6 +9,11 @@ import { errorHandler } from "./middlewares/errorHandler";
 export const createApp = () => {
   const app = express();
 
+  // Detras de nginx todas las peticiones llegan desde 127.0.0.1. Sin esto, la IP
+  // que se registra de cada emergencia es la del proxy y no la del ciudadano, y
+  // req.protocol dice "http" aunque el navegador venga por HTTPS.
+  if (env.nodeEnv === "production") app.set("trust proxy", 1);
+
   app.use(compression());
   app.use(
     cors({ origin: env.corsOrigin.includes("*") ? true : env.corsOrigin }),
