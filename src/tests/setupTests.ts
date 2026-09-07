@@ -1,5 +1,26 @@
 import type { ComponentType, ReactElement, ReactNode } from 'react';
 
+jest.mock('@react-native-async-storage/async-storage', () => {
+  const almacen = new Map<string, string>();
+  return {
+    getItem: jest.fn(async (k: string) => almacen.get(k) ?? null),
+    setItem: jest.fn(async (k: string, v: string) => {
+      almacen.set(k, v);
+    }),
+    removeItem: jest.fn(async (k: string) => {
+      almacen.delete(k);
+    }),
+  };
+});
+
+jest.mock('expo-network', () => ({
+  getNetworkStateAsync: jest.fn().mockResolvedValue({
+    isConnected: true,
+    isInternetReachable: true,
+  }),
+  addNetworkStateListener: jest.fn(() => ({ remove: jest.fn() })),
+}));
+
 jest.mock('expo-secure-store', () => ({
   WHEN_UNLOCKED_THIS_DEVICE_ONLY: 1,
   getItemAsync: jest.fn().mockResolvedValue(null),

@@ -14,6 +14,7 @@ import type {
   LoginCredentials,
   RegisterPayload,
 } from '../../features/auth/domain/repositories/AuthRepository';
+import { decidirTrasFalloDeRefresco } from '../../features/auth/domain/decidirTrasFalloDeRefresco';
 import { AuthApi } from '../../features/auth/data/datasources/AuthApi';
 import { TokenStorage } from '../../features/auth/data/datasources/TokenStorage';
 import { AuthRepositoryImpl } from '../../features/auth/data/repositories/AuthRepositoryImpl';
@@ -36,6 +37,11 @@ type AuthContextValue = {
   accessToken: string | null;
   /** Cierto cuando se salto el registro y se esta recorriendo la app sin cuenta. */
   explorando: boolean;
+  /**
+   * Cierto cuando la sesion se restauro del dispositivo porque no se pudo contactar
+   * con la Central. La persona sigue dentro, pero los datos pueden estar desfasados.
+   */
+  sinConexion: boolean;
   signIn: (credentials: LoginCredentials) => Promise<void>;
   signUp: (payload: RegisterPayload) => Promise<void>;
   signOut: () => Promise<void>;
@@ -59,6 +65,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): ReactElement => {
   const [user, setUser] = useState<User | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [explorando, setExplorando] = useState(false);
+  const [sinConexion, setSinConexion] = useState(false);
 
   const applySession = useCallback(async (session: {
     user: User;
@@ -66,6 +73,8 @@ export const AuthProvider = ({ children }: AuthProviderProps): ReactElement => {
     refreshToken: string;
   }): Promise<void> => {
     await tokenStorage.saveTokens(session.accessToken, session.refreshToken);
+    await tokenStorage.saveUser(session.user);
+    setSinConexion(false);
     setUser(session.user);
     setAccessToken(session.accessToken);
     // Al registrarse o entrar deja de ser visitante.
@@ -91,12 +100,27 @@ export const AuthProvider = ({ children }: AuthProviderProps): ReactElement => {
         }
         const session = await authRepository.refreshToken(refreshToken);
         if (active) await applySession(session);
-      } catch {
-        await tokenStorage.clear();
+      } catch (error) {
+        if (decidirTrasFalloDeRefresco(error) === 'cerrar_sesion') {
+          // Solo aqui: el backend respondio que la sesion ya no vale.
+          await tokenStorage.clear();
+          if (active) {
+            setUser(null);
+            setAccessToken(null);
+            setStatus('guest');
+          }
+          return;
+        }
+
+        // Sin respuesta de la Central: se conserva el registro del dispositivo y se
+        // entra con la ultima sesion conocida, en vez de mandar al formulario.
+        const usuarioLocal = await tokenStorage.getUser();
+        const tokenLocal = await tokenStorage.getAccessToken();
         if (active) {
-          setUser(null);
-          setAccessToken(null);
-          setStatus('guest');
+          setUser(usuarioLocal);
+          setAccessToken(tokenLocal);
+          setSinConexion(true);
+          setStatus('authenticated');
         }
       }
     };
@@ -139,6 +163,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): ReactElement => {
     setUser(null);
     setAccessToken(null);
     setExplorando(false);
+    setSinConexion(false);
     setStatus('guest');
   }, []);
 
@@ -148,6 +173,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): ReactElement => {
       user,
       accessToken,
       explorando,
+      sinConexion,
       signIn,
       signUp,
       signOut,
@@ -162,6 +188,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): ReactElement => {
       signIn,
       signOut,
       signUp,
+      sinConexion,
       status,
       user,
     ],

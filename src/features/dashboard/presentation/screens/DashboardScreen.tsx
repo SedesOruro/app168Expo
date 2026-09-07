@@ -1,5 +1,7 @@
-import React, { ReactElement } from 'react';
+import React, { ReactElement, useCallback, useEffect, useState } from 'react';
 import {
+  Alert,
+  Linking,
   Pressable,
   ScrollView,
   StatusBar,
@@ -7,6 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import * as Network from 'expo-network';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -15,6 +18,8 @@ import { useTheme } from 'styled-components/native';
 
 import type { MainStackParamList } from '../../../../app/navigation/types';
 import type { AppTheme } from '../../../../shared/theme';
+import { servicio } from '../../../../shared/constants/institucion';
+import { decidirCanalDeEmergencia } from '../../../emergency/domain/decidirCanalDeEmergencia';
 import { BottomTabBar } from '../../../emergency/presentation/components/BottomTabBar';
 import { CirculoSos } from '../../../emergency/presentation/components/CirculoSos';
 import { EmergencyFlowSteps } from '../../../emergency/presentation/components/EmergencyFlowSteps';
@@ -34,10 +39,61 @@ const accesosRapidos = [
 
 export const DashboardScreen = (): ReactElement => {
   const navigation = useNavigation<DashboardNavigation>();
-  const { user, status, pedirRegistro } = useAuth();
+  const { user, status, sinConexion, pedirRegistro } = useAuth();
   const tema = useTheme() as AppTheme;
   const estilos = crearEstilos(tema);
   const registrado = status === 'authenticated';
+  const [sinDatos, setSinDatos] = useState(false);
+
+  /**
+   * Se consulta el estado de la red al entrar y al volver a la pantalla para que el
+   * boton diga de antemano lo que va a hacer, en vez de descubrirlo tras un tiempo
+   * de espera agotado con la persona esperando.
+   */
+  const revisarRed = useCallback(async (): Promise<void> => {
+    try {
+      const estado = await Network.getNetworkStateAsync();
+      setSinDatos(decidirCanalDeEmergencia(estado) === 'llamada');
+    } catch {
+      // Si la comprobacion falla se asume que hay datos: el envio por la
+      // aplicacion lleva ubicacion y perfil, y merece la pena intentarlo.
+      setSinDatos(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void revisarRed();
+    const suscripcion = Network.addNetworkStateListener(estado => {
+      setSinDatos(decidirCanalDeEmergencia(estado) === 'llamada');
+    });
+    return () => suscripcion.remove();
+  }, [revisarRed]);
+
+  /**
+   * Sin datos moviles la alerta no puede salir por la aplicacion, pero la red de
+   * voz suele seguir en pie. Se ofrece marcar el 168 en vez de dejar a la persona
+   * ante un envio que va a fallar.
+   */
+  const llamarAlServicio = (): void => {
+    Alert.alert(
+      'Sin conexion de datos',
+      `No se puede enviar la alerta por la aplicacion. Puedes llamar al ${servicio.numero}, que funciona con la señal del telefono.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: `Llamar al ${servicio.numero}`,
+          onPress: () => {
+            Linking.openURL(`tel:${servicio.numero}`).catch(() =>
+              Alert.alert(
+                'No se pudo abrir el telefono',
+                `Marca el ${servicio.numero} desde la aplicacion de llamadas.`,
+              ),
+            );
+          },
+        },
+      ],
+    );
+  };
 
   /**
    * Sin cuenta no se puede emitir una alerta: la Central necesita saber a quien
@@ -49,7 +105,20 @@ export const DashboardScreen = (): ReactElement => {
       pedirRegistro().catch(() => undefined);
       return;
     }
-    destino();
+
+    // Se vuelve a mirar la red en el momento de pulsar: entre que se cargo la
+    // pantalla y ahora la conexion puede haberse caido.
+    Network.getNetworkStateAsync()
+      .then(estado => {
+        if (decidirCanalDeEmergencia(estado) === 'llamada') {
+          setSinDatos(true);
+          llamarAlServicio();
+          return;
+        }
+        setSinDatos(false);
+        destino();
+      })
+      .catch(() => destino());
   };
 
   return (
@@ -78,6 +147,19 @@ export const DashboardScreen = (): ReactElement => {
           </Text>
         </View>
 
+        {sinConexion ? (
+          <View style={estilos.avisoSinConexion}>
+            <MaterialCommunityIcons
+              name="cloud-off-outline"
+              size={18}
+              color={tema.colors.warningText}
+            />
+            <Text style={estilos.textoSinConexion}>
+              Sin conexion con la Central. Tu registro sigue en el telefono.
+            </Text>
+          </View>
+        ) : null}
+
         <Text style={estilos.titulo}>Centro de emergencias 168</Text>
         <Text style={estilos.subtitulo}>
           {registrado
@@ -90,6 +172,7 @@ export const DashboardScreen = (): ReactElement => {
         </View>
 
         <CirculoSos
+          etiqueta={sinDatos ? 'LLAMAR' : 'EMERGENCIA'}
           onPress={() =>
             irAEmergencia(() =>
               navigation.navigate('Emergency', { flow: 'direct' }),
@@ -181,6 +264,22 @@ const crearEstilos = (tema: AppTheme) =>
     saludo: {
       ...tema.estilosTexto.bodyStrong,
       color: tema.colors.textMuted,
+    },
+    avisoSinConexion: {
+      width: '100%',
+      marginBottom: tema.spacing.md,
+      paddingVertical: tema.spacing.sm,
+      paddingHorizontal: tema.spacing.md,
+      borderRadius: tema.radius.md,
+      backgroundColor: tema.colors.warningSoft,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: tema.spacing.sm,
+    },
+    textoSinConexion: {
+      ...tema.estilosTexto.caption,
+      flex: 1,
+      color: tema.colors.warningText,
     },
     titulo: {
       ...tema.estilosTexto.h1,

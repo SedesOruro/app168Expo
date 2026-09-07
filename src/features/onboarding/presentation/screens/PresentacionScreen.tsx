@@ -1,14 +1,14 @@
 import React, { ReactElement, useEffect } from 'react';
-import { Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from 'styled-components/native';
 
+import { logosInstitucionales } from '../../../../shared/assets/logos';
 import { institucion, servicio } from '../../../../shared/constants/institucion';
 import type { AppTheme } from '../../../../shared/theme';
-import { BrandStrip } from '../../../emergency/presentation/components/BrandStrip';
 
 /** Milisegundos que la presentacion permanece antes de continuar sola. */
-const DURACION = 2400;
+const DURACION = 2800;
 
 type PresentacionScreenProps = {
   onTerminar: () => void;
@@ -19,7 +19,11 @@ type PresentacionScreenProps = {
  * al arrancar y no vuelve: dentro de la aplicacion los sellos restan espacio y
  * atencion a lo que importa, que es pedir ayuda rapido.
  *
- * Se puede tocar para saltarla; si no, continua sola pasados DURACION ms.
+ * Reparto: los respaldos departamentales arriba, el sello del servicio que opera la
+ * linea al centro junto al nombre de la aplicacion, y la entidad al pie.
+ *
+ * Los sellos se apoyan sobre una placa clara porque estan disenados para papel
+ * blanco; asi se leen igual con la aplicacion en claro o en oscuro.
  */
 export const PresentacionScreen = ({
   onTerminar,
@@ -45,14 +49,33 @@ export const PresentacionScreen = ({
           backgroundColor={tema.colors.background}
         />
 
+        <View style={estilos.franjaSuperior}>
+          <View style={estilos.placa}>
+            <Image
+              source={logosInstitucionales.sedes.fuente}
+              style={estilos.selloSuperior}
+              resizeMode="contain"
+              accessibilityLabel={logosInstitucionales.sedes.titulo}
+            />
+          </View>
+        </View>
+
         <View style={estilos.centro}>
+          <View style={estilos.placaCentral}>
+            <Image
+              source={logosInstitucionales.coordinacionRedes.fuente}
+              style={estilos.selloCentral}
+              resizeMode="contain"
+              accessibilityLabel={logosInstitucionales.coordinacionRedes.titulo}
+            />
+          </View>
+
           <Text style={estilos.numero}>{servicio.numero}</Text>
           <Text style={estilos.nombre}>{servicio.nombre}</Text>
           <Text style={estilos.descripcion}>{servicio.descripcionCorta}</Text>
         </View>
 
         <View style={estilos.pie}>
-          <BrandStrip />
           <Text style={estilos.institucion}>
             {institucion.nombreCompleto}
             {'\n'}
@@ -70,12 +93,39 @@ const crearEstilos = (tema: AppTheme) =>
       flex: 1,
       backgroundColor: tema.colors.background,
     },
+    franjaSuperior: {
+      paddingTop: tema.spacing.xl,
+      paddingHorizontal: tema.spacing.xl,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: tema.spacing.md,
+    },
+    placa: {
+      padding: tema.spacing.sm,
+      borderRadius: tema.radius.md,
+      backgroundColor: tema.colors.onFill,
+    },
+    selloSuperior: {
+      width: 76,
+      height: 76,
+    },
     centro: {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
       paddingHorizontal: tema.spacing.xl,
       gap: tema.spacing.sm,
+    },
+    placaCentral: {
+      marginBottom: tema.spacing.lg,
+      padding: tema.spacing.md,
+      borderRadius: tema.radius.pill,
+      backgroundColor: tema.colors.onFill,
+    },
+    selloCentral: {
+      width: 132,
+      height: 132,
     },
     numero: {
       ...tema.estilosTexto.display,
@@ -95,7 +145,6 @@ const crearEstilos = (tema: AppTheme) =>
     pie: {
       paddingHorizontal: tema.spacing.xl,
       paddingBottom: tema.spacing.xxl,
-      gap: tema.spacing.md,
     },
     institucion: {
       ...tema.estilosTexto.caption,

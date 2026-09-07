@@ -25,6 +25,8 @@ import { useQuery } from '@tanstack/react-query';
 
 import type { MainStackParamList } from '../../../../app/navigation/types';
 import type { AppTheme } from '../../../../shared/theme';
+import { diagnosticarFalloCentros } from '../utils/diagnosticarFalloCentros';
+import { obtenerCentrosSalud } from '../../data/obtenerCentrosSalud';
 import { env } from '../../../../shared/config/env';
 import { BottomTabBar } from '../components/BottomTabBar';
 import { emergencyApi, type Coordinates, type HealthCenter } from '../../data/EmergencyApi';
@@ -72,9 +74,14 @@ export const HealthCentersScreen = (): ReactElement => {
 
   const centersQuery = useQuery({
     queryKey: ['health-centers', 'oruro-city'],
-    queryFn: () => emergencyApi.getHealthCenters(ORURO_KM_ZERO),
+    queryFn: () => obtenerCentrosSalud(location ?? ORURO_KM_ZERO),
   });
-  const centers = centersQuery.data ?? [];
+  const centers = centersQuery.data?.centros ?? [];
+  const desdeCache = centersQuery.data?.origen === 'cache';
+
+  const diagnostico = centersQuery.isError
+    ? diagnosticarFalloCentros(centersQuery.error)
+    : null;
   const mappedCenters = centers.filter(center => centerCoordinates(center));
   const cityCenters = useMemo(
     () =>
@@ -202,8 +209,49 @@ export const HealthCentersScreen = (): ReactElement => {
       </Map>
 
       <View style={estilos.listPanel}>
+        {desdeCache ? (
+          <View style={estilos.avisoCache}>
+            <MaterialCommunityIcons
+              name="cloud-off-outline"
+              size={16}
+              color={tema.colors.warningText}
+            />
+            <Text style={estilos.textoCache}>
+              Datos guardados en el telefono
+              {centersQuery.data?.actualizadoEn
+                ? ` · ${new Date(centersQuery.data.actualizadoEn).toLocaleDateString()}`
+                : ''}
+            </Text>
+          </View>
+        ) : null}
+
         {centersQuery.isLoading ? (
           <ActivityIndicator size="large" color={tema.colors.accentText} />
+        ) : diagnostico ? (
+          <View style={estilos.bloqueError}>
+            <MaterialCommunityIcons
+              name="cloud-off-outline"
+              size={34}
+              color={tema.colors.textMuted}
+            />
+            <Text style={estilos.tituloError}>{diagnostico.titulo}</Text>
+            <Text style={estilos.detalleError}>{diagnostico.detalle}</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Reintentar"
+              style={({ pressed }) => [
+                estilos.botonReintentar,
+                pressed && estilos.reintentarPresionado,
+              ]}
+              onPress={() => {
+                void centersQuery.refetch();
+              }}
+            >
+              <Text style={estilos.textoReintentar}>
+                {centersQuery.isFetching ? 'Reintentando...' : 'Reintentar'}
+              </Text>
+            </Pressable>
+          </View>
         ) : (
           <ScrollView>
             {centers.map(center => (
@@ -250,6 +298,56 @@ export const HealthCentersScreen = (): ReactElement => {
 
 const crearEstilos = (tema: AppTheme) =>
   StyleSheet.create({
+    avisoCache: {
+      marginBottom: tema.spacing.sm,
+      paddingVertical: tema.spacing.xs,
+      paddingHorizontal: tema.spacing.md,
+      borderRadius: tema.radius.pill,
+      backgroundColor: tema.colors.warningSoft,
+      alignSelf: 'flex-start',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: tema.spacing.xs,
+    },
+    textoCache: {
+      ...tema.estilosTexto.caption,
+      color: tema.colors.warningText,
+    },
+    bloqueError: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: tema.spacing.xl,
+      paddingHorizontal: tema.spacing.lg,
+      gap: tema.spacing.sm,
+    },
+    tituloError: {
+      ...tema.estilosTexto.h3,
+      color: tema.colors.text,
+      textAlign: 'center',
+    },
+    detalleError: {
+      ...tema.estilosTexto.body,
+      fontSize: 14,
+      lineHeight: 20,
+      color: tema.colors.textMuted,
+      textAlign: 'center',
+    },
+    botonReintentar: {
+      marginTop: tema.spacing.sm,
+      minHeight: 44,
+      paddingHorizontal: tema.spacing.xl,
+      borderRadius: tema.radius.pill,
+      backgroundColor: tema.colors.accentFill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    reintentarPresionado: {
+      opacity: 0.86,
+    },
+    textoReintentar: {
+      ...tema.estilosTexto.bodyStrong,
+      color: tema.colors.onFill,
+    },
   screen: { flex: 1, backgroundColor: tema.colors.surface },
   header: {
     height: 64,
