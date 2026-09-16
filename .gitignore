@@ -50,3 +50,4 @@ backend/uploads/
 
 # graphify knowledge graph (regenerable: /graphify .)
 graphify-out/
+*.keystore
