@@ -305,7 +305,7 @@ export const RegisterScreen = (): ReactElement => {
           {/*
             Saltar deja recorrer la aplicacion sin cuenta. El boton de emergencia
             sigue pidiendo el registro al pulsarlo.
-          */}
+          
           <Pressable
             accessibilityRole="button"
             accessibilityHint="Explora la aplicacion sin cuenta. Para pedir ayuda tendras que registrarte."
@@ -316,7 +316,7 @@ export const RegisterScreen = (): ReactElement => {
             }}
           >
             <Text style={estilos.textoSaltar}>Saltar registro por ahora</Text>
-          </Pressable>
+          </Pressable>*/}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
