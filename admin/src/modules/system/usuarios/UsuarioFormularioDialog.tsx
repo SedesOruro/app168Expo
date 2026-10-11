@@ -1,12 +1,10 @@
 import {
   Button,
-  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   FormControl,
-  FormControlLabel,
   InputLabel,
   MenuItem,
   Select,
@@ -26,7 +24,6 @@ const emptyForm: UsuarioFormModel = {
   segundo_apellido: "",
   direccion: "",
   telefono: "",
-  is_jefe: false,
   genero: "NINGUNO",
   rol_id: ""
 };
@@ -49,8 +46,7 @@ export const UsuarioFormularioDialog = ({ open, formModel, onCancel, onComplete,
       formModel
         ? {
             ...formModel,
-            password: "******",
-            is_jefe: formModel.is_jefe === true || String(formModel.is_jefe) === "1"
+            password: "******"
           }
         : emptyForm
     );
@@ -122,10 +118,6 @@ export const UsuarioFormularioDialog = ({ open, formModel, onCancel, onComplete,
                 <MenuItem value="NINGUNO">NINGUNO</MenuItem>
               </Select>
             </FormControl>
-            <FormControlLabel
-              control={<Checkbox checked={!!form.is_jefe} onChange={(event) => setForm((current) => ({ ...current, is_jefe: event.target.checked }))} />}
-              label="Es jefe"
-            />
           </Stack>
         </Stack>
       </DialogContent>

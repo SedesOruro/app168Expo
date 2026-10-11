@@ -63,7 +63,6 @@ CREATE TABLE `usuario` (
   `direccion` varchar(220) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '',
   `celular` varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '',
   `genero` enum('MASCULINO','FEMENINO','NINGUNO') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'NINGUNO',
-  `is_jefe` tinyint(1) DEFAULT '0',
   `activo` tinyint(1) DEFAULT '1',
   `estado` enum('ACTIVO','INACTIVO','ELIMINADO') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'ACTIVO',
   `avatar` varchar(220) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'avatar_default.png',
@@ -354,10 +353,10 @@ INSERT INTO `rol` (`id`, `nombre`, `tipo`, `permisos`, `modulos`) VALUES
    '{"read":true,"edit":true,"send":true}',
    '[{"id":"emergencias","name":"emergencias","path":"/emergencias","title":"Emergencias","icon":"emergencias","color":"primary"},{"id":"ciudadanos","name":"ciudadanos","path":"/ciudadanos","title":"Ciudadanos","icon":"ciudadanos","color":"primary"}]');
 
-INSERT INTO `usuario` (`id`, `username`, `password`, `fullname`, `nombre`, `primer_apellido`, `segundo_apellido`, `ci`, `email`, `direccion`, `celular`, `genero`, `is_jefe`, `activo`, `estado`, `avatar`, `fid_role`) VALUES
-  ('8f3c2a1e-5b7d-4c90-a1e2-3d4f5a6b7c01', 'admin@gmail.com', '$2b$10$xo8apEBo.ld1CKggXfmS4.rgEVjUUL6cnoxSW/GmHbwQI0AD9LH5K', 'Carla Mendoza Rojas', 'Carla', 'Mendoza', 'Rojas', '6123457', 'admin@gmail.com', 'Av. 6 de Agosto 1180, Oruro', '72451890', 'FEMENINO', FALSE, TRUE, 'ACTIVO', 'avatar_default.png', '00000000-0000-0000-0000-000000000002'),
-  ('8f3c2a1e-5b7d-4c90-a1e2-3d4f5a6b7c02', 'operador1@gmail.com', '$2b$10$KrUjHrMr2/cmYU84mv5yA.uq9EcnLw4i47Wsl/tBvIOsXnSrRiCmu', 'Jorge Quispe Mamani', 'Jorge', 'Quispe', 'Mamani', '5987341', 'operador1@gmail.com', 'Calle Junin 455, Oruro', '71893402', 'MASCULINO', FALSE, TRUE, 'ACTIVO', 'avatar_default.png', '00000000-0000-0000-0000-000000000003'),
-  ('8f3c2a1e-5b7d-4c90-a1e2-3d4f5a6b7c03', 'operador2@gmail.com', '$2b$10$0YB1Y7QHws.AAOFtubgwGOud0kFmHamzqswPXrT6Ie4xPIZsMj8tC', 'Lucia Choque Vargas', 'Lucia', 'Choque', 'Vargas', '7034518', 'operador2@gmail.com', 'Calle Potosi 820, Oruro', '76120458', 'FEMENINO', FALSE, TRUE, 'ACTIVO', 'avatar_default.png', '00000000-0000-0000-0000-000000000003');
+INSERT INTO `usuario` (`id`, `username`, `password`, `fullname`, `nombre`, `primer_apellido`, `segundo_apellido`, `ci`, `email`, `direccion`, `celular`, `genero`, `activo`, `estado`, `avatar`, `fid_role`) VALUES
+  ('8f3c2a1e-5b7d-4c90-a1e2-3d4f5a6b7c01', 'admin@gmail.com', '$2b$10$xo8apEBo.ld1CKggXfmS4.rgEVjUUL6cnoxSW/GmHbwQI0AD9LH5K', 'Carla Mendoza Rojas', 'Carla', 'Mendoza', 'Rojas', '6123457', 'admin@gmail.com', 'Av. 6 de Agosto 1180, Oruro', '72451890', 'FEMENINO', TRUE, 'ACTIVO', 'avatar_default.png', '00000000-0000-0000-0000-000000000002'),
+  ('8f3c2a1e-5b7d-4c90-a1e2-3d4f5a6b7c02', 'operador1@gmail.com', '$2b$10$KrUjHrMr2/cmYU84mv5yA.uq9EcnLw4i47Wsl/tBvIOsXnSrRiCmu', 'Jorge Quispe Mamani', 'Jorge', 'Quispe', 'Mamani', '5987341', 'operador1@gmail.com', 'Calle Junin 455, Oruro', '71893402', 'MASCULINO', TRUE, 'ACTIVO', 'avatar_default.png', '00000000-0000-0000-0000-000000000003'),
+  ('8f3c2a1e-5b7d-4c90-a1e2-3d4f5a6b7c03', 'operador2@gmail.com', '$2b$10$0YB1Y7QHws.AAOFtubgwGOud0kFmHamzqswPXrT6Ie4xPIZsMj8tC', 'Lucia Choque Vargas', 'Lucia', 'Choque', 'Vargas', '7034518', 'operador2@gmail.com', 'Calle Potosi 820, Oruro', '76120458', 'FEMENINO', TRUE, 'ACTIVO', 'avatar_default.png', '00000000-0000-0000-0000-000000000003');
 
 -- ----------------------------------------------------------------------------
 -- 4. Ciudadanos registrados (app movil)

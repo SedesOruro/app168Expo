@@ -22,7 +22,6 @@ export type UsuarioProps = {
   direccion: string;
   celular: string;
   genero: "MASCULINO" | "FEMENINO" | "NINGUNO";
-  isJefe?: boolean;
   activo: boolean;
   estado: "ACTIVO" | "INACTIVO" | "ELIMINADO";
   avatar?: string;

@@ -20,7 +20,6 @@ export type CreaUsuarioParams = {
   genero: "MASCULINO" | "FEMENINO" | "NINGUNO";
   rolId: string;
   avatar?: string;
-  isJefe?: boolean;
 };
 
 export type EditaUsuarioParams = Partial<CreaUsuarioParams> & {
@@ -73,7 +72,6 @@ export class UsuarioService extends BaseService<UsuarioEntity, UsuarioProps> {
         celular: params.celular,
         genero: params.genero,
         rolId: params.rolId,
-        isJefe: params.isJefe || false,
         estado: "ACTIVO",
         activo: true,
         avatar: params.avatar || "avatar_default.png",
@@ -118,7 +116,6 @@ export class UsuarioService extends BaseService<UsuarioEntity, UsuarioProps> {
       celular: params.celular || user.props.celular,
       genero: params.genero || user.props.genero,
       rolId: params.rolId || user.props.rolId,
-      isJefe: params.isJefe ?? user.props.isJefe,
       estado,
       activo: estado === "ACTIVO",
       avatar: params.avatar || user.props.avatar,

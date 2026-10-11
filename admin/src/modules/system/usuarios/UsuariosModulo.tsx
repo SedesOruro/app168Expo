@@ -94,11 +94,6 @@ export const UsuariosModulo = () => {
       { id: "email", label: "Correo electronico", sort: true },
       { id: "rol", label: "Rol", sort: true },
       {
-        id: "is_jefe",
-        label: "Es jefe",
-        render: (row) => <Chip size="small" label={row.is_jefe ? "SI" : "NO"} color={row.is_jefe ? "primary" : "default"} />
-      },
-      {
         id: "estado",
         label: "Estado",
         render: (row) => <Chip size="small" label={row.estado} color={row.estado === "ACTIVO" ? "success" : "warning"} />
@@ -148,7 +143,7 @@ export const UsuariosModulo = () => {
               <Typography variant="body2" sx={{
                 color: "text.secondary"
               }}>
-                Rol: {row.rol || "-"} {row.is_jefe ? " / jefe" : ""}
+                Rol: {row.rol || "-"}
               </Typography>
               <Stack direction="row" spacing={0.5}>
                 <Tooltip title="Editar">

@@ -82,7 +82,6 @@ export class UsuarioViewController extends BaseHttpController {
       celular: data.telefono || "",
       genero: data.genero || "NINGUNO",
       rolId: data.rol_id,
-      isJefe: Boolean(data.is_jefe),
       avatar: data.avatar,
     };
 
@@ -106,7 +105,6 @@ export class UsuarioViewController extends BaseHttpController {
       celular: data.telefono,
       genero: data.genero,
       rolId: data.rol_id,
-      isJefe: Boolean(data.is_jefe),
       avatar: data.avatar,
       estado: data.estado,
     };

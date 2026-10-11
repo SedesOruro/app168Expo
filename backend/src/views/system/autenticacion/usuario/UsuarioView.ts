@@ -24,7 +24,6 @@ type UsuarioTablaItem = {
   nombre: string;
   email: string;
   rol: string;
-  is_jefe: boolean;
   estado: string;
 };
 
@@ -45,7 +44,6 @@ export type ObtenerDatosFormularioUsuarioRespuesta = {
   ci: string;
   telefono: string;
   genero: string;
-  is_jefe: string;
 };
 
 const mapUsuarioFormulario = (
@@ -62,7 +60,6 @@ const mapUsuarioFormulario = (
   direccion: user.props.direccion,
   telefono: user.props.celular,
   genero: user.props.genero,
-  is_jefe: user.props.isJefe ? "1" : "0",
 });
 
 export class UsuarioView {
@@ -121,7 +118,6 @@ export class UsuarioView {
         nombre: user.getNombreCompletoCI(),
         email: user.props.email,
         rol: rol?.props.nombre || "",
-        is_jefe: user.props.isJefe || false,
         estado: user.props.estado,
       };
     });

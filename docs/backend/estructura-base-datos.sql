@@ -42,7 +42,6 @@ CREATE TABLE `usuario` (
   `direccion` varchar(220) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '',
   `celular` varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '',
   `genero` enum('MASCULINO','FEMENINO','NINGUNO') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'NINGUNO',
-  `is_jefe` tinyint(1) DEFAULT '0',
   `activo` tinyint(1) DEFAULT '1',
   `estado` enum('ACTIVO','INACTIVO','ELIMINADO') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'ACTIVO',
   `avatar` varchar(220) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'avatar_default.png',

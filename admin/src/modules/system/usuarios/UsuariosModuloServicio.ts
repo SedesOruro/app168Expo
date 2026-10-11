@@ -4,7 +4,6 @@ import { BaseResponse, QueryParams } from "../../../types/api";
 export type UsuarioTablaModelo = {
   id: string;
   activo: boolean;
-  is_jefe: boolean;
   nombre: string;
   email: string;
   rol: string;
@@ -22,7 +21,6 @@ export type UsuarioFormModel = {
   primer_apellido: string;
   segundo_apellido?: string;
   direccion?: string;
-  is_jefe?: boolean;
   telefono: string;
   genero: "MASCULINO" | "FEMENINO" | "NINGUNO";
   rol_id: string;

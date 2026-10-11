@@ -13,7 +13,6 @@ export type UsuarioSQLModelData = {
   direccion: string;
   celular: string;
   genero: "MASCULINO" | "FEMENINO" | "NINGUNO";
-  is_jefe?: boolean;
   activo: boolean;
   estado: "ACTIVO" | "INACTIVO" | "ELIMINADO";
   avatar?: string;
@@ -39,7 +38,6 @@ export class UsuarioSQLModel {
         type: Sequelize.ENUM("MASCULINO", "FEMENINO", "NINGUNO"),
         defaultValue: "NINGUNO",
       },
-      is_jefe: { type: Sequelize.BOOLEAN, defaultValue: false },
       activo: { type: Sequelize.BOOLEAN, defaultValue: true },
       estado: {
         type: Sequelize.ENUM("ACTIVO", "INACTIVO", "ELIMINADO"),
