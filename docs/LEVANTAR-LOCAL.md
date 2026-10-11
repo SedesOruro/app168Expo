@@ -78,8 +78,8 @@ y los ciudadanos iniciales. El backend no crea tablas por su cuenta:
 
 ```bash
 cd /d/PROYECTOS/app168Expo
-"/c/wamp64/bin/mysql/mysql8.4.7/bin/mysql.exe" -h 127.0.0.1 -u root -p -e "CREATE DATABASE IF NOT EXISTS \`168-db\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-"/c/wamp64/bin/mysql/mysql8.4.7/bin/mysql.exe" -h 127.0.0.1 -u root -p 168-db < docs/backend/reinicio-base-datos.sql
+"/c/wamp64/bin/mysql/mysql8.4.7/bin/mysql.exe" -h 127.0.0.1 -u root -p -e "CREATE DATABASE IF NOT EXISTS \`central-db\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+"/c/wamp64/bin/mysql/mysql8.4.7/bin/mysql.exe" -h 127.0.0.1 -u root -p central-db < docs/backend/reinicio-base-datos.sql
 ```
 
 ---
