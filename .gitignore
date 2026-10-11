@@ -51,3 +51,5 @@ backend/uploads/
 # graphify knowledge graph (regenerable: /graphify .)
 graphify-out/
 *.keystore
+# APKs generados para distribuir (DEPLOY.md)
+/apk/
