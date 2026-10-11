@@ -19,7 +19,7 @@ admin y móvil apuntan ahí con variables en línea.
 
 ## Antes de explorar: usa el grafo
 
-Hay un grafo de conocimiento en `graphify-out/` (2165 nodos, 4358 aristas, 142 comunidades)
+Hay un grafo de conocimiento en `graphify-out/` (2307 nodos, 4634 aristas, 152 comunidades)
 construido con AST sobre los archivos de código. Consultarlo devuelve un subgrafo
 acotado; hacer `grep`/`glob` a ciegas sobre el repo devuelve mucho más ruido y gasta
 bastantes más tokens.

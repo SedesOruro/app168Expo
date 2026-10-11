@@ -39,9 +39,9 @@ export const env = {
     enabled: bool(process.env.SECURITY_SEED_ENABLED),
     email: process.env.SECURITY_SEED_EMAIL || "",
     password: process.env.SECURITY_SEED_PASSWORD || "",
-    firstName: process.env.SECURITY_SEED_FIRST_NAME || "Super Administrador",
-    firstLastName: process.env.SECURITY_SEED_FIRST_LAST_NAME || "Super",
-    secondLastName: process.env.SECURITY_SEED_SECOND_LAST_NAME || "Admin",
+    firstName: process.env.SECURITY_SEED_FIRST_NAME || "Administrador",
+    firstLastName: process.env.SECURITY_SEED_FIRST_LAST_NAME || "Sistema",
+    secondLastName: process.env.SECURITY_SEED_SECOND_LAST_NAME || "168",
   },
   operacionesSeed: {
     password: process.env.OPERATIONS_SEED_PASSWORD || "Emergencias168",

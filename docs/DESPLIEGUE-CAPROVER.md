@@ -129,7 +129,7 @@ Genera el `JWT_SECRET` con:
 openssl rand -base64 48
 ```
 
-Deja `SECURITY_SEED_ENABLED=false`: en `true` crea un superadministrador con
+Deja `SECURITY_SEED_ENABLED=false`: en `true` crea un administrador con
 contraseña conocida, y en un servidor público eso es una puerta abierta.
 
 ### HTTP Settings

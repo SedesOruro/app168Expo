@@ -66,7 +66,7 @@ Lo que hay que sustituir:
 | `DB_PASSWORD` | La contraseña de MySQL |
 | `JWT_SECRET` | Una clave nueva y aleatoria: `openssl rand -base64 48` |
 
-Deja `SECURITY_SEED_ENABLED=false`. En `true` crea un superadministrador con
+Deja `SECURITY_SEED_ENABLED=false`. En `true` crea un administrador con
 contraseña conocida, lo que en un servidor público es una puerta abierta.
 
 Arranca con un gestor de procesos para que sobreviva a reinicios:

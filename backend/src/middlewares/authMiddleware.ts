@@ -47,19 +47,6 @@ export const checkIfAuthenticated = async (
   }
 };
 
-export const checkIfSuperAdmin = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<Response | void> => {
-  return checkIfAuthenticated(req, res, () => {
-    const rol = String(req.authUser?.rol || "");
-    if (rol !== "superadministrador")
-      return res.status(403).json({ error: "Permisos insuficientes" });
-    return next();
-  });
-};
-
 export const checkIfAdmin = async (
   req: Request,
   res: Response,
@@ -67,7 +54,7 @@ export const checkIfAdmin = async (
 ): Promise<Response | void> => {
   return checkIfAuthenticated(req, res, () => {
     const rol = String(req.authUser?.rol || "");
-    if (!["superadministrador", "administrador"].includes(rol)) {
+    if (rol !== "administrador") {
       return res.status(403).json({ error: "Permisos insuficientes" });
     }
     return next();
@@ -81,7 +68,7 @@ export const checkIfOperationalStaff = async (
 ): Promise<Response | void> => {
   return checkIfAuthenticated(req, res, () => {
     const rol = String(req.authUser?.rol || "");
-    if (!["superadministrador", "administrador", "operador"].includes(rol)) {
+    if (!["administrador", "operador"].includes(rol)) {
       return res.status(403).json({ error: "Permisos insuficientes" });
     }
     return next();

@@ -6,8 +6,7 @@
 -- El registro RUES 400280 no trae coordenadas ni estado y se conserva con NULL.
 --
 -- Tablas de cuentas, para evitar confusiones entre nombres parecidos:
---   `usuario`    -> personal administrativo (superadministrador, administrador,
---                   operador). PK CHAR(36), se relaciona con `rol`.
+--   `usuario`    -> personal administrativo (administrador, operador). PK CHAR(36), se relaciona con `rol`.
 --   `ciudadanos` -> cuentas de la aplicacion movil. PK BIGINT.
 --   `usuarios`   -> OBSOLETA. Nombre anterior de `ciudadanos`. Este script ya no
 --                   la crea y ninguna clave foranea la referencia. Se conserva
@@ -69,13 +68,6 @@ CREATE TABLE IF NOT EXISTS usuario (
 ) ENGINE=InnoDB;
 
 INSERT INTO rol (id, nombre, tipo, permisos, modulos) VALUES
-  (
-    '00000000-0000-0000-0000-000000000001',
-    'Super Administrador',
-    'superadministrador',
-    '{"read":true,"create":true,"edit":true,"remove":true,"send":true,"download":true,"approve":true}',
-    '[{"id":"emergencias","name":"emergencias","path":"/emergencias","title":"Emergencias"},{"id":"ciudadanos","name":"ciudadanos","path":"/ciudadanos","title":"Ciudadanos"},{"id":"centros-salud","name":"centros-salud","path":"/centros-salud","title":"Centros de salud"},{"id":"usuarios","name":"usuarios","path":"/usuarios","title":"Usuarios"},{"id":"roles","name":"roles","path":"/roles","title":"Roles"}]'
-  ),
   (
     '00000000-0000-0000-0000-000000000002',
     'Administrador',

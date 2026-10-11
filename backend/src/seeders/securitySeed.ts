@@ -3,10 +3,9 @@ import UsuarioService from "../core/system/autenticacion/usuario";
 import { env } from "../config/env";
 
 export const SECURITY_IDS = {
-  superAdminRol: "00000000-0000-0000-0000-000000000001",
   adminRol: "00000000-0000-0000-0000-000000000002",
   operatorRol: "00000000-0000-0000-0000-000000000003",
-  superAdminUsuario: "00000000-0000-0000-0000-000000000001",
+  adminUsuario: "00000000-0000-0000-0000-000000000001",
 };
 
 export const ensureSecuritySeed = async (): Promise<void> => {
@@ -44,20 +43,17 @@ export const ensureSecuritySeed = async (): Promise<void> => {
     },
   ];
 
-  const superAdminRole = await RolService.getById(SECURITY_IDS.superAdminRol);
-  if (superAdminRole.isFailure) {
+  const adminRole = await RolService.getById(SECURITY_IDS.adminRol);
+  if (adminRole.isFailure) {
     await RolService.create(
       {
-        nombre: "Super Administrador",
-        tipo: "superadministrador",
+        nombre: "Administrador",
+        tipo: "administrador",
         permisos: JSON.stringify({
           read: true,
           create: true,
           edit: true,
           remove: true,
-          send: true,
-          download: true,
-          approve: true,
         }),
         modulos: [
           ...operationalModules,
@@ -78,24 +74,6 @@ export const ensureSecuritySeed = async (): Promise<void> => {
             color: "primary",
           },
         ],
-      },
-      SECURITY_IDS.superAdminRol,
-    );
-  }
-
-  const adminRole = await RolService.getById(SECURITY_IDS.adminRol);
-  if (adminRole.isFailure) {
-    await RolService.create(
-      {
-        nombre: "Administrador",
-        tipo: "administrador",
-        permisos: JSON.stringify({
-          read: true,
-          create: true,
-          edit: true,
-          remove: true,
-        }),
-        modulos: operationalModules,
       },
       SECURITY_IDS.adminRol,
     );
@@ -128,9 +106,9 @@ export const ensureSecuritySeed = async (): Promise<void> => {
       direccion: "Local",
       celular: "12345678",
       genero: "MASCULINO",
-      rolId: SECURITY_IDS.superAdminRol,
+      rolId: SECURITY_IDS.adminRol,
       avatar: "avatar_default.png",
     },
-    SECURITY_IDS.superAdminUsuario,
+    SECURITY_IDS.adminUsuario,
   );
 };
