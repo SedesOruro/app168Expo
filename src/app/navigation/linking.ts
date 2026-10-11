@@ -9,10 +9,7 @@ export const linking: LinkingOptions<RootStackParamList> = {
       MainStack: {
         screens: {
           Dashboard: 'inicio',
-          Emergency: 'emergencia',
-          EmergencyType: 'emergencia/tipo',
           Triage: 'emergencia/triage',
-          ApiCentral: 'emergencia/central',
           CaseTracking: 'emergencia/seguimiento',
           Evidence: 'emergencia/evidencia',
           HealthCenters: 'centros-de-salud',

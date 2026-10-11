@@ -2,7 +2,6 @@ import React, { ReactElement, useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Linking,
   Pressable,
   ScrollView,
   StatusBar,
@@ -19,8 +18,9 @@ import { useQuery } from '@tanstack/react-query';
 
 import type { MainStackParamList } from '../../../../app/navigation/types';
 import type { AppTheme } from '../../../../shared/theme';
-import { EmergencyFlowSteps } from '../components/EmergencyFlowSteps';
+import { servicio } from '../../../../shared/constants/institucion';
 import { emergencyApi } from '../../data/EmergencyApi';
+import { llamarDirecto } from '../../data/llamadaDirecta';
 import { useEmergencyFlow } from '../providers/EmergencyFlowProvider';
 
 type CaseTrackingNavigation = NativeStackNavigationProp<
@@ -49,13 +49,18 @@ export const CaseTrackingScreen = (): ReactElement => {
     if (query.data) setCurrentEmergency(query.data);
   }, [query.data, setCurrentEmergency]);
 
+  // Si la central ya asigno operador con telefono se le llama directo; si no,
+  // se llama al 168, que siempre atiende.
+  const telefonoOperador = emergency?.operador?.telefono;
   const callOperator = async (): Promise<void> => {
-    const phone = emergency?.operador?.telefono;
-    if (!phone) {
-      Alert.alert('Operador no disponible', 'La central aun no asigno un numero de contacto.');
-      return;
+    try {
+      await llamarDirecto(telefonoOperador || servicio.numero);
+    } catch {
+      Alert.alert(
+        'No se pudo iniciar la llamada',
+        `Marca el ${telefonoOperador || servicio.numero} desde la aplicacion de llamadas.`,
+      );
     }
-    await Linking.openURL(`tel:${phone}`);
   };
 
   return (
@@ -74,8 +79,6 @@ export const CaseTrackingScreen = (): ReactElement => {
       </View>
 
       <ScrollView contentContainerStyle={estilos.content}>
-        <EmergencyFlowSteps activeStep={6} />
-
         {!emergency && query.isLoading ? <ActivityIndicator size="large" color={tema.colors.accentText} /> : null}
         <View style={estilos.successIcon}>
           <MaterialCommunityIcons name="check-bold" size={48} color={tema.colors.onFill} />
@@ -114,7 +117,9 @@ export const CaseTrackingScreen = (): ReactElement => {
           onPress={callOperator}
         >
           <MaterialCommunityIcons name="phone" size={24} color={tema.colors.onFill} />
-          <Text style={estilos.operatorText}>LLAMAR OPERADOR</Text>
+          <Text style={estilos.operatorText}>
+            {telefonoOperador ? 'LLAMAR OPERADOR' : `LLAMAR AL ${servicio.numero}`}
+          </Text>
         </Pressable>
 
         <Pressable

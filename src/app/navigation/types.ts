@@ -7,15 +7,7 @@ export type AuthStackParamList = {
 
 export type MainStackParamList = {
   Dashboard: undefined;
-  Emergency:
-    | {
-        flow?: 'direct' | 'guided';
-        quickAccess?: string;
-      }
-    | undefined;
-  EmergencyType: undefined;
   Triage: undefined;
-  ApiCentral: undefined;
   CaseTracking: { emergencyUuid?: string } | undefined;
   Evidence: { emergencyUuid?: string } | undefined;
   HealthCenters: undefined;

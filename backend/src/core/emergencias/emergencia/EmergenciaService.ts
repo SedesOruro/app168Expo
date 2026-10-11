@@ -3,6 +3,7 @@ import { Result } from "../../../base/types/Result";
 import { EmergenciaEntity, EmergenciaProps } from "./EmergenciaEntity";
 import {
   CambioOperativo,
+  ComplementoTriage,
   EmergenciaConRelaciones,
   EmergenciaListadoQuery,
   EntradaHistorial,
@@ -73,6 +74,14 @@ export class EmergenciaService extends BaseService<
 
   registrarNueva(datos: NuevaEmergencia): Promise<Result<string>> {
     return this.repo.registrarNueva(datos);
+  }
+
+  completarTriage(
+    uuid: string,
+    ciudadanoId: number,
+    datos: ComplementoTriage,
+  ): Promise<Result<boolean>> {
+    return this.repo.completarTriage(uuid, ciudadanoId, datos);
   }
 
   /**

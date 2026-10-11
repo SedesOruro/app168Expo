@@ -79,6 +79,16 @@ export interface IEmergenciaRepository extends IRepository<EmergenciaEntity> {
    * entrada de historial. El codigo publico se asigna con el id ya generado.
    */
   registrarNueva(datos: NuevaEmergencia): Promise<Result<string>>;
+  /**
+   * Completa, despues de la llamada al 168, una emergencia del propio
+   * ciudadano: tipo, afectados, descripcion y respuestas de triage. Rechaza
+   * emergencias ajenas o ya finalizadas.
+   */
+  completarTriage(
+    uuid: string,
+    ciudadanoId: number,
+    datos: ComplementoTriage,
+  ): Promise<Result<boolean>>;
 }
 
 export type RespuestaTriageNueva = {
@@ -87,6 +97,14 @@ export type RespuestaTriageNueva = {
   opcionCodigo: string;
   respuestaTexto: string;
   pesoAplicado: number;
+};
+
+export type ComplementoTriage = {
+  tipoEmergenciaId: number;
+  puntajeTriage: number;
+  cantidadAfectados: number;
+  descripcion: string | null;
+  triage: RespuestaTriageNueva[];
 };
 
 export type NuevaEmergencia = {

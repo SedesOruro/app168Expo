@@ -92,6 +92,23 @@ export class CiudadanoViewController extends BaseHttpController {
     return res.json(detalle);
   }
 
+  async completarTriage(req: Request, res: Response): Promise<Response> {
+    const uuid = routeParam(req.params.uuid);
+    const result = await CiudadanoView.completarTriage(
+      uuid,
+      req.authCiudadanoId!,
+      req.body,
+    );
+    if (result.isFailure) return this.fallo(res, result);
+
+    const detalle = await CiudadanoView.obtenerEmergencia(
+      uuid,
+      req.authCiudadanoId!,
+    );
+    if (detalle.isFailure) return this.fail(res, detalle.error);
+    return res.status(200).json(detalle.getValue());
+  }
+
   async registrarEvidencia(req: Request, res: Response): Promise<Response> {
     const result = await CiudadanoView.registrarEvidencia(
       routeParam(req.params.uuid),

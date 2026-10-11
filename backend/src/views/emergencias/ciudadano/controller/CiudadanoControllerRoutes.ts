@@ -41,6 +41,9 @@ ciudadanoRoutes.get("/emergencies", (req, res, next) =>
 ciudadanoRoutes.get("/emergencies/:uuid", (req, res, next) =>
   controller.obtenerEmergencia(req, res).catch(next),
 );
+ciudadanoRoutes.patch("/emergencies/:uuid/triage", (req, res, next) =>
+  controller.completarTriage(req, res).catch(next),
+);
 ciudadanoRoutes.post("/emergencies/:uuid/evidence", (req, res, next) =>
   controller.registrarEvidencia(req, res).catch(next),
 );

@@ -21,6 +21,15 @@ const PREGUNTAS_TRIAGE: Array<[string, string]> = [
   ["danger", "Hay riesgo en el lugar?"],
 ];
 
+const respuestasTriage = (triage: Record<string, string>) =>
+  PREGUNTAS_TRIAGE.map(([codigo, texto]) => ({
+    preguntaCodigo: codigo,
+    preguntaTexto: texto,
+    opcionCodigo: triage[codigo] || "NO_SE",
+    respuestaTexto: triage[codigo] || "NO_SE",
+    pesoAplicado: 0,
+  }));
+
 export type NuevaEmergenciaPayload = Record<string, any>;
 
 export class CiudadanoView {
@@ -156,19 +165,45 @@ export class CiudadanoView {
         batteryLevel: numeroONulo(body.batteryLevel),
         flow: body.flow || "guided",
       },
-      triage: PREGUNTAS_TRIAGE.map(([codigo, texto]) => ({
-        preguntaCodigo: codigo,
-        preguntaTexto: texto,
-        opcionCodigo: triage[codigo] || "NO_SE",
-        respuestaTexto: triage[codigo] || "NO_SE",
-        pesoAplicado: 0,
-      })),
+      triage: respuestasTriage(triage),
       observacionHistorial: "Emergencia reportada desde la aplicacion movil",
     });
     if (registrada.isFailure)
       return Result.fail(registrada.error || "No se pudo registrar");
 
     return Result.ok({ uuid: registrada.getValue(), creada: true });
+  }
+
+  /**
+   * Triage posterior a la llamada al 168: la emergencia ya existe con la
+   * ubicacion y aqui se completa lo que el ciudadano pudo contar despues.
+   */
+  async completarTriage(
+    uuid: string,
+    ciudadanoId: number,
+    body: Record<string, any>,
+  ): Promise<Result<boolean>> {
+    const tipo = await TipoEmergenciaService.buscarPorCodigoActivo(
+      String(body.typeCode || "MEDICA").trim(),
+    );
+    if (tipo.isFailure || !tipo.getValue())
+      return Result.fail("Tipo de emergencia no valido");
+
+    const afectados = Math.trunc(Number(body.affected ?? 1));
+    if (!Number.isFinite(afectados) || afectados < 1 || afectados > 999)
+      return Result.fail("La cantidad de afectados debe estar entre 1 y 999");
+
+    const triage = (body.triage || {}) as Record<string, string>;
+    return EmergenciaService.completarTriage(uuid, ciudadanoId, {
+      tipoEmergenciaId: tipo.getValue()!.id,
+      puntajeTriage: EmergenciaServiceClass.calcularPuntajeTriage(
+        "ALTA",
+        triage,
+      ),
+      cantidadAfectados: afectados,
+      descripcion: String(body.description || "").trim().slice(0, 2000) || null,
+      triage: respuestasTriage(triage),
+    });
   }
 
   listarEmergencias(ciudadanoId: number) {

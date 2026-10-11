@@ -5,62 +5,87 @@ import React, {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 
-import type { Coordinates, EmergencyRecord } from '../../data/EmergencyApi';
+import { emergencyApi, type EmergencyRecord } from '../../data/EmergencyApi';
+import { getCurrentCoordinates } from '../../data/locationService';
 
-export type EmergencyDraft = {
-  flow: 'direct' | 'guided';
-  canSpeak: boolean;
-  typeCode: string;
-  severity: string;
-  triage: Record<string, string>;
-  location: Coordinates | null;
-};
-
-const initialDraft: EmergencyDraft = {
-  flow: 'guided',
-  canSpeak: true,
-  typeCode: 'MEDICA',
-  severity: 'ALTA',
-  triage: { breathing: 'NO_SE', conscious: 'NO_SE', danger: 'NO_SE' },
-  location: null,
-};
+/**
+ * Estado del alta de la emergencia que se lanza al pulsar el boton 168. La
+ * llamada sale primero; el registro con ubicacion corre mientras se habla.
+ */
+export type EstadoRegistro = 'sin_iniciar' | 'registrando' | 'registrada' | 'fallida';
 
 type EmergencyFlowContextValue = {
-  draft: EmergencyDraft;
   currentEmergency: EmergencyRecord | null;
-  updateDraft: (changes: Partial<EmergencyDraft>) => void;
+  estadoRegistro: EstadoRegistro;
+  errorRegistro: string | null;
+  registrarAlerta: () => Promise<void>;
   setCurrentEmergency: (emergency: EmergencyRecord | null) => void;
-  resetDraft: () => void;
 };
 
 const EmergencyFlowContext = createContext<EmergencyFlowContextValue | undefined>(
   undefined,
 );
 
+const nuevaClave = (): string =>
+  'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, caracter => {
+    const aleatorio = (Math.random() * 16) | 0;
+    const valor = caracter === 'x' ? aleatorio : (aleatorio & 0x3) | 0x8;
+    return valor.toString(16);
+  });
+
 export const EmergencyFlowProvider = ({
   children,
 }: {
   children: ReactNode;
 }): ReactElement => {
-  const [draft, setDraft] = useState<EmergencyDraft>(initialDraft);
   const [currentEmergency, setCurrentEmergency] =
     useState<EmergencyRecord | null>(null);
-  const updateDraft = useCallback((changes: Partial<EmergencyDraft>) => {
-    setDraft(current => ({ ...current, ...changes }));
+  const [estadoRegistro, setEstadoRegistro] = useState<EstadoRegistro>('sin_iniciar');
+  const [errorRegistro, setErrorRegistro] = useState<string | null>(null);
+  // Una misma clave por alerta: si se reintenta tras un fallo de red, el
+  // backend devuelve la emergencia ya creada en vez de duplicarla.
+  const claveAlerta = useRef<string | null>(null);
+
+  const registrarAlerta = useCallback(async (): Promise<void> => {
+    claveAlerta.current ??= nuevaClave();
+    setEstadoRegistro('registrando');
+    setErrorRegistro(null);
+    try {
+      const location = await getCurrentCoordinates();
+      const emergency = await emergencyApi.createEmergency({
+        ...location,
+        idempotencyKey: claveAlerta.current,
+        typeCode: 'MEDICA',
+        severity: 'ALTA',
+        canSpeak: true,
+        locationConfirmed: true,
+        flow: 'direct',
+        triage: {},
+      });
+      setCurrentEmergency(emergency);
+      setEstadoRegistro('registrada');
+      claveAlerta.current = null;
+    } catch (error) {
+      setErrorRegistro(
+        error instanceof Error ? error.message : 'No se pudo registrar la alerta.',
+      );
+      setEstadoRegistro('fallida');
+    }
   }, []);
-  const resetDraft = useCallback(() => setDraft(initialDraft), []);
+
   const value = useMemo(
     () => ({
-      draft,
       currentEmergency,
-      updateDraft,
+      estadoRegistro,
+      errorRegistro,
+      registrarAlerta,
       setCurrentEmergency,
-      resetDraft,
     }),
-    [currentEmergency, draft, resetDraft, updateDraft],
+    [currentEmergency, errorRegistro, estadoRegistro, registrarAlerta],
   );
   return (
     <EmergencyFlowContext.Provider value={value}>

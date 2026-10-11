@@ -95,6 +95,13 @@ export type CreateEmergencyPayload = Coordinates & {
   triage: Record<string, string>;
 };
 
+export type CompleteTriagePayload = {
+  typeCode: string;
+  triage: Record<string, string>;
+  affected: number;
+  description?: string;
+};
+
 const getHealthCenters = (
   location?: Coordinates | null,
   search = '',
@@ -148,6 +155,11 @@ export const emergencyApi = {
     authenticatedClient.put('/mobile/profile', payload),
   createEmergency: (payload: CreateEmergencyPayload): Promise<EmergencyRecord> =>
     authenticatedClient.post('/mobile/emergencies', payload),
+  completeTriage: (
+    uuid: string,
+    payload: CompleteTriagePayload,
+  ): Promise<EmergencyRecord> =>
+    authenticatedClient.patch(`/mobile/emergencies/${uuid}/triage`, payload),
   listEmergencies: (): Promise<EmergencyRecord[]> =>
     authenticatedClient.get('/mobile/emergencies'),
   getEmergency: (uuid: string): Promise<EmergencyRecord> =>

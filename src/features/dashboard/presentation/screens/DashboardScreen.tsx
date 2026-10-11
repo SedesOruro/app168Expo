@@ -1,8 +1,6 @@
 import React, { ReactElement, useCallback, useEffect, useState } from 'react';
 import {
   Alert,
-  Linking,
-  Pressable,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -22,7 +20,8 @@ import { servicio } from '../../../../shared/constants/institucion';
 import { decidirCanalDeEmergencia } from '../../../emergency/domain/decidirCanalDeEmergencia';
 import { BottomTabBar } from '../../../emergency/presentation/components/BottomTabBar';
 import { CirculoSos } from '../../../emergency/presentation/components/CirculoSos';
-import { EmergencyFlowSteps } from '../../../emergency/presentation/components/EmergencyFlowSteps';
+import { llamarDirecto } from '../../../emergency/data/llamadaDirecta';
+import { useEmergencyFlow } from '../../../emergency/presentation/providers/EmergencyFlowProvider';
 import { useAuth } from '../../../../app/providers/AuthProvider';
 
 type DashboardNavigation = NativeStackNavigationProp<
@@ -30,16 +29,10 @@ type DashboardNavigation = NativeStackNavigationProp<
   'Dashboard'
 >;
 
-const accesosRapidos = [
-  { icon: 'ambulance', label: 'Ambulancia', tono: 'danger' },
-  { icon: 'fire', label: 'Bomberos', tono: 'warning' },
-  { icon: 'police-badge', label: 'Policia', tono: 'secondary' },
-  { icon: 'dots-horizontal', label: 'Otro', tono: 'textMuted' },
-] as const;
-
 export const DashboardScreen = (): ReactElement => {
   const navigation = useNavigation<DashboardNavigation>();
   const { user, status, sinConexion, pedirRegistro } = useAuth();
+  const { registrarAlerta } = useEmergencyFlow();
   const tema = useTheme() as AppTheme;
   const estilos = crearEstilos(tema);
   const registrado = status === 'authenticated';
@@ -70,55 +63,35 @@ export const DashboardScreen = (): ReactElement => {
   }, [revisarRed]);
 
   /**
-   * Sin datos moviles la alerta no puede salir por la aplicacion, pero la red de
-   * voz suele seguir en pie. Se ofrece marcar el 168 en vez de dejar a la persona
-   * ante un envio que va a fallar.
+   * El boton es otra forma de llamar al 168: la llamada sale de inmediato, sin
+   * pasos previos. Con cuenta y datos moviles, ademas se registra la alerta con
+   * la ubicacion mientras se habla, y al volver de la llamada la app espera en
+   * el triage para completar los datos. Sin datos la llamada basta por si sola.
    */
-  const llamarAlServicio = (): void => {
-    Alert.alert(
-      'Sin conexion de datos',
-      `No se puede enviar la alerta por la aplicacion. Puedes llamar al ${servicio.numero}, que funciona con la señal del telefono.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: `Llamar al ${servicio.numero}`,
-          onPress: () => {
-            Linking.openURL(`tel:${servicio.numero}`).catch(() =>
-              Alert.alert(
-                'No se pudo abrir el telefono',
-                `Marca el ${servicio.numero} desde la aplicacion de llamadas.`,
-              ),
-            );
-          },
-        },
-      ],
-    );
-  };
-
-  /**
-   * Sin cuenta no se puede emitir una alerta: la Central necesita saber a quien
-   * atiende y a que numero devolver la llamada. Al pulsar se sale del modo
-   * exploracion, con lo que RootNavigator devuelve al formulario de registro.
-   */
-  const irAEmergencia = (destino: () => void): void => {
-    if (!registrado) {
-      pedirRegistro().catch(() => undefined);
-      return;
+  const pedirAyuda = async (): Promise<void> => {
+    // La llamada va primero y se espera a que salga antes de pedir la
+    // ubicacion, para que los dos dialogos de permiso no se pisen.
+    try {
+      await llamarDirecto(servicio.numero);
+    } catch {
+      Alert.alert(
+        'No se pudo iniciar la llamada',
+        `Marca el ${servicio.numero} desde la aplicacion de llamadas.`,
+      );
     }
+    if (!registrado) return;
 
-    // Se vuelve a mirar la red en el momento de pulsar: entre que se cargo la
-    // pantalla y ahora la conexion puede haberse caido.
-    Network.getNetworkStateAsync()
-      .then(estado => {
-        if (decidirCanalDeEmergencia(estado) === 'llamada') {
-          setSinDatos(true);
-          llamarAlServicio();
-          return;
-        }
-        setSinDatos(false);
-        destino();
-      })
-      .catch(() => destino());
+    let hayDatos = true;
+    try {
+      hayDatos = decidirCanalDeEmergencia(await Network.getNetworkStateAsync()) === 'app';
+    } catch {
+      // Ante la duda se intenta el registro: si falla, la llamada ya salio.
+    }
+    setSinDatos(!hayDatos);
+    if (!hayDatos) return;
+
+    void registrarAlerta();
+    navigation.navigate('Triage');
   };
 
   return (
@@ -162,53 +135,24 @@ export const DashboardScreen = (): ReactElement => {
 
         <Text style={estilos.titulo}>Centro de emergencias 168</Text>
         <Text style={estilos.subtitulo}>
-          {registrado
-            ? 'Pedir ayuda en maximo 2 taps.'
-            : 'Estas explorando la aplicacion. Para pedir ayuda hay que registrarse.'}
+          {registrado && !sinDatos
+            ? 'Un toque llama al 168. Despues puedes completar los datos.'
+            : 'Un toque llama al 168, como una llamada normal.'}
         </Text>
 
-        <View style={estilos.envoltorioPasos}>
-          <EmergencyFlowSteps activeStep={1} />
+        <View style={estilos.envoltorioBoton}>
+          <CirculoSos etiqueta="LLAMAR 168" onPress={() => void pedirAyuda()} />
         </View>
 
-        <CirculoSos
-          etiqueta={sinDatos ? 'LLAMAR' : 'EMERGENCIA'}
-          onPress={() =>
-            irAEmergencia(() =>
-              navigation.navigate('Emergency', { flow: 'direct' }),
-            )
-          }
-        />
-
-        <Text style={estilos.textoEleccion}>Accesos rapidos</Text>
-
-        <View style={estilos.opciones}>
-          {accesosRapidos.map(acceso => (
-            <Pressable
-              key={acceso.label}
-              accessibilityRole="button"
-              accessibilityLabel={acceso.label}
-              style={({ pressed }) => [estilos.chip, pressed && estilos.presionado]}
-              onPress={() =>
-                irAEmergencia(() =>
-                  navigation.navigate('Emergency', {
-                    flow: 'guided',
-                    quickAccess: acceso.label,
-                  }),
-                )
-              }
-            >
-              <View style={estilos.circuloIcono}>
-                <MaterialCommunityIcons
-                  name={acceso.icon}
-                  size={18}
-                  color={tema.colors[acceso.tono]}
-                />
-              </View>
-              <Text style={estilos.textoChip}>{acceso.label}</Text>
-            </Pressable>
-          ))}
-        </View>
+        {!registrado ? (
+          <Text
+            accessibilityRole="link"
+            style={estilos.enlaceRegistro}
+            onPress={() => pedirRegistro().catch(() => undefined)}
+          >
+            Registrate para que la central reciba tu ubicacion y tu perfil medico.
+          </Text>
+        ) : null}
 
         <View style={estilos.panelListo}>
           <MaterialCommunityIcons
@@ -216,7 +160,7 @@ export const DashboardScreen = (): ReactElement => {
             size={24}
             color={tema.colors.success}
           />
-          <Text style={estilos.textoListo}>Estado: Listo para enviar</Text>
+          <Text style={estilos.textoListo}>Estado: Listo para llamar</Text>
         </View>
       </ScrollView>
 
@@ -292,50 +236,15 @@ const crearEstilos = (tema: AppTheme) =>
       color: tema.colors.textMuted,
       textAlign: 'center',
     },
-    envoltorioPasos: {
-      width: '100%',
+    envoltorioBoton: {
       marginTop: tema.spacing.xl,
     },
-    presionado: {
-      opacity: 0.88,
-    },
-    textoEleccion: {
-      ...tema.estilosTexto.h3,
-      width: '100%',
-      marginTop: tema.spacing.xl,
-      color: tema.colors.text,
-    },
-    opciones: {
-      width: '100%',
-      marginTop: tema.spacing.lg,
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: tema.spacing.sm,
-    },
-    chip: {
-      minHeight: 44,
-      borderRadius: tema.radius.pill,
-      borderWidth: 1,
-      borderColor: tema.colors.border,
-      backgroundColor: tema.colors.surface,
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingLeft: tema.spacing.xs,
-      paddingRight: tema.spacing.lg,
-      gap: tema.spacing.sm,
-    },
-    circuloIcono: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: tema.colors.surfaceMuted,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    textoChip: {
+    enlaceRegistro: {
       ...tema.estilosTexto.bodyStrong,
-      fontSize: 14,
-      color: tema.colors.text,
+      marginTop: tema.spacing.xl,
+      color: tema.colors.accentText,
+      textAlign: 'center',
+      textDecorationLine: 'underline',
     },
     panelListo: {
       width: '100%',

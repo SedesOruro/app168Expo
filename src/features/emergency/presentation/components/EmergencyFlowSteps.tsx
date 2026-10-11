@@ -4,7 +4,7 @@ import { useTheme } from 'styled-components/native';
 
 import type { AppTheme } from '../../../../shared/theme';
 
-const defaultSteps = ['168', 'Confirmar', 'Tipo', 'Triage', 'Central', 'Seguimiento'];
+const defaultSteps = ['Que pasa', 'Detalles'];
 
 type EmergencyFlowStepsProps = {
   activeStep: number;

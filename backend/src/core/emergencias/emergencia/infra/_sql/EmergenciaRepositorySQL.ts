@@ -5,6 +5,7 @@ import { Database } from "../../../../../config/database";
 import { EmergenciaEntity } from "../../EmergenciaEntity";
 import {
   CambioOperativo,
+  ComplementoTriage,
   EmergenciaConRelaciones,
   EmergenciaListadoQuery,
   EntradaHistorial,
@@ -375,6 +376,74 @@ export class EmergenciaRepositorySQL
     } catch (error) {
       await transaction.rollback();
       return Result.fail<string>(String((error as Error).message), "INTERNO");
+    }
+  }
+
+  async completarTriage(
+    uuid: string,
+    ciudadanoId: number,
+    datos: ComplementoTriage,
+  ): Promise<Result<boolean>> {
+    const transaction = await db().sequelize.transaction();
+    try {
+      const emergencia = await this.model.findOne({
+        where: { uuid, usuario_id: ciudadanoId },
+        include: [
+          {
+            model: db().models.estadoEmergencia,
+            as: "estado",
+            attributes: ["es_final"],
+          },
+        ],
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!emergencia) {
+        await transaction.rollback();
+        return Result.noEncontrado<boolean>("Emergencia no encontrada");
+      }
+      const estado = emergencia.get("estado") as { es_final?: boolean } | null;
+      if (estado?.es_final) {
+        await transaction.rollback();
+        return Result.conflicto<boolean>(
+          "La emergencia ya fue cerrada por la central",
+        );
+      }
+
+      await emergencia.update(
+        {
+          tipo_emergencia_id: datos.tipoEmergenciaId,
+          puntaje_triage: datos.puntajeTriage,
+          cantidad_afectados: datos.cantidadAfectados,
+          descripcion: datos.descripcion,
+        },
+        { transaction },
+      );
+      await db().models.respuestaTriage.destroy({
+        where: { emergencia_id: emergencia.id },
+        transaction,
+      });
+      await Promise.all(
+        datos.triage.map((respuesta) =>
+          db().models.respuestaTriage.create(
+            {
+              emergencia_id: emergencia.id,
+              pregunta_codigo: respuesta.preguntaCodigo,
+              pregunta_texto: respuesta.preguntaTexto,
+              opcion_codigo: respuesta.opcionCodigo,
+              respuesta_texto: respuesta.respuestaTexto,
+              peso_aplicado: respuesta.pesoAplicado,
+            },
+            { transaction },
+          ),
+        ),
+      );
+
+      await transaction.commit();
+      return Result.ok(true);
+    } catch (error) {
+      await transaction.rollback();
+      return Result.fail<boolean>(String((error as Error).message), "INTERNO");
     }
   }
 }

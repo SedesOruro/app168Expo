@@ -2,10 +2,7 @@ import React, { ReactElement } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { DashboardScreen } from '../../features/dashboard/presentation/screens/DashboardScreen';
-import { ApiCentralScreen } from '../../features/emergency/presentation/screens/ApiCentralScreen';
 import { CaseTrackingScreen } from '../../features/emergency/presentation/screens/CaseTrackingScreen';
-import { EmergencyScreen } from '../../features/emergency/presentation/screens/EmergencyScreen';
-import { EmergencyTypeScreen } from '../../features/emergency/presentation/screens/EmergencyTypeScreen';
 import { EvidenceScreen } from '../../features/emergency/presentation/screens/EvidenceScreen';
 import { HealthCentersScreen } from '../../features/emergency/presentation/screens/HealthCentersScreen';
 import { HistoryScreen } from '../../features/emergency/presentation/screens/HistoryScreen';
@@ -20,10 +17,7 @@ const Stack = createNativeStackNavigator<MainStackParamList>();
 export const MainNavigator = (): ReactElement => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="Dashboard" component={DashboardScreen} />
-    <Stack.Screen name="Emergency" component={EmergencyScreen} />
-    <Stack.Screen name="EmergencyType" component={EmergencyTypeScreen} />
     <Stack.Screen name="Triage" component={TriageScreen} />
-    <Stack.Screen name="ApiCentral" component={ApiCentralScreen} />
     <Stack.Screen name="CaseTracking" component={CaseTrackingScreen} />
     <Stack.Screen name="Evidence" component={EvidenceScreen} />
     <Stack.Screen name="HealthCenters" component={HealthCentersScreen} />
