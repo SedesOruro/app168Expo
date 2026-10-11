@@ -77,6 +77,8 @@ export const OperationsService = {
     BaseService.findAll("/operations/citizens", params),
   updateCitizenStatus: (uuid: string, active: boolean): Promise<BaseResponse<unknown>> =>
     BaseService.request("patch", `/operations/citizens/${uuid}/status`, { active }),
+  resetCitizenPassword: (uuid: string): Promise<BaseResponse<unknown>> =>
+    BaseService.request("patch", `/operations/citizens/${uuid}/password`),
   healthCenters: (params?: QueryParams): Promise<BaseResponse<HealthCenterRow>> =>
     BaseService.findAll("/operations/health-centers", params),
   createHealthCenter: (payload: HealthCenterForm): Promise<BaseResponse<HealthCenterRow>> =>

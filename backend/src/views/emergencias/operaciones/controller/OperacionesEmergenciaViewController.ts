@@ -75,6 +75,17 @@ export class OperacionesEmergenciaViewController extends BaseHttpController {
     return res.json({ updated: true, status: activo ? "ACTIVO" : "INACTIVO" });
   }
 
+  async restablecerPasswordCiudadano(
+    req: Request,
+    res: Response,
+  ): Promise<Response> {
+    const result = await OperacionesView.restablecerPasswordCiudadano(
+      routeParam(req.params.uuid),
+    );
+    if (result.isFailure) return this.fallo(res, result);
+    return res.json({ updated: true });
+  }
+
   async listarCentrosSalud(req: Request, res: Response): Promise<Response> {
     const data = await OperacionesView.listarCentrosSalud(req.query);
     if (data.isFailure) return this.fail(res, data.error);

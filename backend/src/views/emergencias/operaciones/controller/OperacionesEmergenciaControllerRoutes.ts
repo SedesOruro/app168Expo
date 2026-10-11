@@ -38,6 +38,9 @@ emergencyAdminRoutes.patch("/citizens/:uuid/status", checkIfAdmin, (req, res) =>
   controller.cambiarEstadoCiudadano(req, res),
 );
 
+emergencyAdminRoutes.patch("/citizens/:uuid/password", checkIfAdmin, (req, res) =>
+  controller.restablecerPasswordCiudadano(req, res),
+);
 emergencyAdminRoutes.get("/health-centers", (req, res) =>
   controller.listarCentrosSalud(req, res),
 );

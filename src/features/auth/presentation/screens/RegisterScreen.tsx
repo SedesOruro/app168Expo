@@ -15,8 +15,12 @@ import { TextInput } from 'react-native-paper';
 import { useTheme } from 'styled-components/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useAuth } from '../../../../app/providers/AuthProvider';
+import type { AuthStackParamList } from '../../../../app/navigation/types';
+import { ApiError } from '../../../../shared/api/apiError';
 import type { AppTheme } from '../../../../shared/theme';
 import { SeccionAcordeon, type EstadoSeccion } from '../components/SeccionAcordeon';
 import {
@@ -25,6 +29,7 @@ import {
 } from '../hooks/useBorradorRegistro';
 
 type ClaveSeccion = 'personales' | 'acceso' | 'contacto';
+type RegisterNavigation = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
 
 /** Formato que exige el backend en `birthDate`. */
 const FORMATO_FECHA = /^\d{4}-\d{2}-\d{2}$/;
@@ -46,6 +51,7 @@ const FECHA_POR_DEFECTO = new Date(1990, 0, 1);
 
 export const RegisterScreen = (): ReactElement => {
   const { signUp, saltarRegistro } = useAuth();
+  const navigation = useNavigation<RegisterNavigation>();
   const tema = useTheme() as AppTheme;
   const estilos = crearEstilos(tema);
   const { datos, actualizar, limpiar } = useBorradorRegistro();
@@ -120,6 +126,22 @@ export const RegisterScreen = (): ReactElement => {
       // La cuenta ya existe: el borrador deja de tener sentido y se descarta.
       await limpiar();
     } catch (error) {
+      // El correo, telefono o cedula ya tienen cuenta: suele ser alguien que
+      // cambio de celular. Se le lleva a ingresar en vez de dejarlo atascado.
+      if (error instanceof ApiError && error.status === 409) {
+        Alert.alert(
+          'Ya tienes una cuenta',
+          `${error.message}. Ingresa con tu correo y contrasena. Si no la recuerdas, pide a la Central 168 que la restablezca.`,
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            {
+              text: 'Iniciar sesion',
+              onPress: () => navigation.navigate('Login', { email: datos.email.trim() }),
+            },
+          ],
+        );
+        return;
+      }
       Alert.alert(
         'No se pudo completar el registro',
         error instanceof Error ? error.message : 'Intente nuevamente.',
@@ -148,6 +170,16 @@ export const RegisterScreen = (): ReactElement => {
           <Text style={estilos.subtitulo}>
             Completa las secciones en el orden que prefieras — se guardan solas.
           </Text>
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel="Ya tengo cuenta, iniciar sesion"
+            style={estilos.enlaceIngresar}
+            onPress={() => navigation.navigate('Login')}
+          >
+            <Text style={estilos.textoEnlaceIngresar}>
+              ¿Ya tienes cuenta? Inicia sesion
+            </Text>
+          </Pressable>
 
           <View style={estilos.barra}>
             <View
@@ -325,6 +357,16 @@ export const RegisterScreen = (): ReactElement => {
 
 const crearEstilos = (tema: AppTheme) =>
   StyleSheet.create({
+    enlaceIngresar: {
+      minHeight: 44,
+      alignSelf: 'flex-start',
+      justifyContent: 'center',
+    },
+    textoEnlaceIngresar: {
+      ...tema.estilosTexto.bodyStrong,
+      color: tema.colors.accentText,
+      textDecorationLine: 'underline',
+    },
     pantalla: {
       flex: 1,
       backgroundColor: tema.colors.background,

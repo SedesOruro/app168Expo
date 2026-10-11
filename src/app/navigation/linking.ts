@@ -17,6 +17,7 @@ export const linking: LinkingOptions<RootStackParamList> = {
           Information: 'informacion',
           Profile: 'perfil',
           ProfileEdit: 'perfil/editar',
+          ChangePassword: 'perfil/contrasena',
         },
       },
     },

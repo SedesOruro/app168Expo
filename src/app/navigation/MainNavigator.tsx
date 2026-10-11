@@ -2,6 +2,7 @@ import React, { ReactElement } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { DashboardScreen } from '../../features/dashboard/presentation/screens/DashboardScreen';
+import { ChangePasswordScreen } from '../../features/emergency/presentation/screens/ChangePasswordScreen';
 import { CaseTrackingScreen } from '../../features/emergency/presentation/screens/CaseTrackingScreen';
 import { EvidenceScreen } from '../../features/emergency/presentation/screens/EvidenceScreen';
 import { HealthCentersScreen } from '../../features/emergency/presentation/screens/HealthCentersScreen';
@@ -24,6 +25,7 @@ export const MainNavigator = (): ReactElement => (
     <Stack.Screen name="Information" component={InformationScreen} />
     <Stack.Screen name="Profile" component={ProfileScreen} />
     <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
+    <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
     <Stack.Screen name="History" component={HistoryScreen} />
   </Stack.Navigator>
 );

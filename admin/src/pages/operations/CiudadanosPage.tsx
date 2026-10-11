@@ -1,5 +1,6 @@
 import {
   Alert,
+  Button,
   Chip,
   CircularProgress,
   Paper,
@@ -27,6 +28,7 @@ export const CiudadanosPage = () => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -47,6 +49,22 @@ export const CiudadanosPage = () => {
     else await load();
   };
 
+  const resetPassword = async (row: CitizenRow) => {
+    const ci = row.perfil?.cedula_identidad;
+    if (!ci) {
+      setError("El ciudadano no tiene cedula registrada.");
+      return;
+    }
+    if (!window.confirm(`Restablecer la contrasena de ${row.email} a su CI (${ci}) como contrasena temporal?`)) return;
+    const result = await OperationsService.resetCitizenPassword(row.uuid);
+    if (!result.success) {
+      setError(result.msg);
+      return;
+    }
+    setError("");
+    setNotice(`Contrasena de ${row.email} restablecida a su CI. Es temporal: debe cambiarla desde Perfil en la aplicacion.`);
+  };
+
   return (
     <PageContainer>
       <Stack spacing={2}>
@@ -55,10 +73,11 @@ export const CiudadanosPage = () => {
           <TextField size="small" label="Buscar correo o telefono" value={search} onChange={(event) => { setSearch(event.target.value); setPage(0); }} />
         </Stack>
         {error ? <Alert severity="error">{error}</Alert> : null}
+        {notice ? <Alert severity="success" onClose={() => setNotice("")}>{notice}</Alert> : null}
         <Paper variant="outlined">
           {loading ? <Stack sx={{ alignItems: "center", py: 6 }}><CircularProgress /></Stack> : (
             <TableContainer><Table size="small">
-              <TableHead><TableRow><TableCell>Nombre</TableCell><TableCell>CI</TableCell><TableCell>Correo</TableCell><TableCell>Telefono</TableCell><TableCell>Estado</TableCell><TableCell>Activo</TableCell></TableRow></TableHead>
+              <TableHead><TableRow><TableCell>Nombre</TableCell><TableCell>CI</TableCell><TableCell>Correo</TableCell><TableCell>Telefono</TableCell><TableCell>Estado</TableCell><TableCell>Activo</TableCell><TableCell>Contrasena</TableCell></TableRow></TableHead>
               <TableBody>{rows.map((row) => (
                 <TableRow key={row.uuid}>
                   <TableCell>{row.perfil ? `${row.perfil.nombres} ${row.perfil.apellidos}` : "-"}</TableCell>
@@ -66,6 +85,7 @@ export const CiudadanosPage = () => {
                   <TableCell>{row.email}</TableCell><TableCell>{row.telefono || "-"}</TableCell>
                   <TableCell><Chip size="small" label={row.estado} color={row.estado === "ACTIVO" ? "success" : "default"} /></TableCell>
                   <TableCell><Switch checked={row.estado === "ACTIVO"} onChange={(_event, checked) => changeStatus(row, checked)} /></TableCell>
+                  <TableCell><Button size="small" variant="outlined" disabled={!row.perfil?.cedula_identidad} onClick={() => resetPassword(row)}>Restablecer a CI</Button></TableCell>
                 </TableRow>
               ))}</TableBody>
             </Table></TableContainer>

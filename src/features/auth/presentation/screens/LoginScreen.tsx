@@ -1,7 +1,7 @@
 import React, { ReactElement, useState } from 'react';
 import { Alert } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useNavigation } from '@react-navigation/native';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { TextInput } from 'react-native-paper';
 import styled from 'styled-components/native';
 
@@ -12,6 +12,7 @@ import { AuthLayout } from '../../../../shared/layouts/AuthLayout';
 import { isValidEmail } from '../../../../shared/utils/validators';
 
 type LoginNavigation = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
+type LoginRoute = RouteProp<AuthStackParamList, 'Login'>;
 
 const Form = styled.View`
   gap: ${({ theme }) => theme.spacing.lg}px;
@@ -30,8 +31,9 @@ const LinkText = styled.Text`
 
 export const LoginScreen = (): ReactElement => {
   const navigation = useNavigation<LoginNavigation>();
+  const route = useRoute<LoginRoute>();
   const { signIn } = useAuth();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(route.params?.email ?? '');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 

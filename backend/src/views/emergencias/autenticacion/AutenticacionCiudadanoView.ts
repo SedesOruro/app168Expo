@@ -207,6 +207,40 @@ export class AutenticacionCiudadanoView {
     return SesionRefreshService.revocarPorHash(hashToken(refreshToken));
   }
 
+  /**
+   * Cambio de contrasena desde el perfil. Sirve tambien para reemplazar la
+   * contrasena temporal (la cedula) que asigna el administrador al restablecerla.
+   */
+  async cambiarPassword(
+    ciudadanoId: number,
+    actual: string,
+    nueva: string,
+  ): Promise<Result<boolean>> {
+    if (!actual || !nueva)
+      return Result.fail("La contrasena actual y la nueva son requeridas");
+    if (String(nueva).length < 8)
+      return Result.fail("La nueva contrasena debe tener al menos 8 caracteres");
+
+    const resumen = await CiudadanoService.obtenerResumen(ciudadanoId);
+    if (resumen.isFailure || !resumen.getValue())
+      return Result.noEncontrado("Ciudadano no encontrado");
+    const cuenta = resumen.getValue()!;
+
+    const credencial = await CiudadanoService.buscarCredencialPorCorreo(
+      cuenta.email,
+    );
+    const hashActual = credencial.isSuccess
+      ? credencial.getValue()?.passwordHash
+      : undefined;
+    if (!hashActual || !(await bcrypt.compare(String(actual), hashActual)))
+      return Result.fail("La contrasena actual no es correcta");
+
+    return CiudadanoService.actualizarPasswordPorUuid(
+      cuenta.uuid,
+      await bcrypt.hash(String(nueva), 10),
+    );
+  }
+
   async obtenerCuenta(ciudadanoId: number) {
     const resumen = await CiudadanoService.obtenerResumen(ciudadanoId);
     if (resumen.isFailure)

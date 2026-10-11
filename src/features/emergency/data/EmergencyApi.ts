@@ -151,6 +151,11 @@ export const emergencyApi = {
   getHealthCenters,
   getProfile: (): Promise<EmergencyProfile> =>
     authenticatedClient.get('/mobile/profile'),
+  changePassword: (payload: {
+    currentPassword: string;
+    newPassword: string;
+  }): Promise<{ updated: boolean }> =>
+    authenticatedClient.post('/auth/change-password', payload),
   updateProfile: (payload: Record<string, unknown>): Promise<{ updated: boolean }> =>
     authenticatedClient.put('/mobile/profile', payload),
   createEmergency: (payload: CreateEmergencyPayload): Promise<EmergencyRecord> =>

@@ -48,6 +48,16 @@ export class AutenticacionCiudadanoViewController extends BaseHttpController {
     return res.status(204).send();
   }
 
+  async cambiarPassword(req: Request, res: Response): Promise<Response> {
+    const result = await AutenticacionCiudadanoView.cambiarPassword(
+      req.authCiudadanoId!,
+      req.body.currentPassword,
+      req.body.newPassword,
+    );
+    if (result.isFailure) return this.fallo(res, result);
+    return res.json({ updated: true });
+  }
+
   async obtenerCuenta(req: Request, res: Response): Promise<Response> {
     const result = await AutenticacionCiudadanoView.obtenerCuenta(
       req.authCiudadanoId!,

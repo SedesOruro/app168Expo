@@ -22,5 +22,10 @@ autenticacionCiudadanoRoutes.get(
   checkIfCiudadanoAuthenticated,
   (req, res, next) => controller.obtenerCuenta(req, res).catch(next),
 );
+autenticacionCiudadanoRoutes.post(
+  "/change-password",
+  checkIfCiudadanoAuthenticated,
+  (req, res, next) => controller.cambiarPassword(req, res).catch(next),
+);
 
 export default autenticacionCiudadanoRoutes;

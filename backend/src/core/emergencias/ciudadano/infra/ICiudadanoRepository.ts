@@ -85,4 +85,10 @@ export interface ICiudadanoRepository extends IRepository<CiudadanoEntity> {
     uuid: string,
     estado: "ACTIVO" | "INACTIVO",
   ): Promise<Result<boolean>>;
+  /** Cedula registrada en el perfil del ciudadano, o null si no tiene perfil. */
+  buscarCedulaPorUuid(uuid: string): Promise<Result<string | null>>;
+  actualizarPasswordPorUuid(
+    uuid: string,
+    passwordHash: string,
+  ): Promise<Result<boolean>>;
 }

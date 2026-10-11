@@ -1,3 +1,4 @@
+import bcrypt from "bcryptjs";
 import { Result } from "../../../base/types/Result";
 import CentroSaludService from "../../../core/emergencias/centro_salud";
 import CiudadanoService from "../../../core/emergencias/ciudadano";
@@ -148,6 +149,22 @@ export class OperacionesView {
 
   async cambiarEstadoCiudadano(uuid: string, activo: boolean) {
     return CiudadanoService.cambiarEstadoPorUuid(uuid, activo);
+  }
+
+  /**
+   * Para quien cambio de celular y no recuerda su contrasena: el administrador
+   * la restablece a su cedula de identidad como contrasena temporal, que la
+   * persona debe cambiar desde su perfil en la aplicacion.
+   */
+  async restablecerPasswordCiudadano(uuid: string): Promise<Result<boolean>> {
+    const cedula = await CiudadanoService.buscarCedulaPorUuid(uuid);
+    if (cedula.isFailure) return Result.fail(cedula.error!, cedula.errorCode);
+    if (!cedula.getValue())
+      return Result.fail("El ciudadano no tiene cedula registrada en su perfil");
+    return CiudadanoService.actualizarPasswordPorUuid(
+      uuid,
+      await bcrypt.hash(String(cedula.getValue()), 10),
+    );
   }
 
   async listarCentrosSalud(query: ListQuery) {

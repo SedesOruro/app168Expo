@@ -52,6 +52,17 @@ export class CiudadanoService extends BaseService<
     return this.repo.cambiarEstadoPorUuid(uuid, activo ? "ACTIVO" : "INACTIVO");
   }
 
+  buscarCedulaPorUuid(uuid: string): Promise<Result<string | null>> {
+    return this.repo.buscarCedulaPorUuid(uuid);
+  }
+
+  actualizarPasswordPorUuid(
+    uuid: string,
+    passwordHash: string,
+  ): Promise<Result<boolean>> {
+    return this.repo.actualizarPasswordPorUuid(uuid, passwordHash);
+  }
+
   buscarCredencialPorCorreo(
     email: string,
   ): Promise<Result<CredencialCiudadano | null>> {

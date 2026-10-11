@@ -121,6 +121,16 @@ export const ProfileScreen = (): ReactElement => {
             })}
           </View>
         </View>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Cambiar contrasena"
+          style={({ pressed }) => [estilos.seguridadBoton, pressed && { opacity: 0.86 }]}
+          onPress={() => navigation.navigate('ChangePassword')}
+        >
+          <MaterialCommunityIcons name="lock-reset" size={22} color={tema.colors.accentText} />
+          <Text style={estilos.seguridadTexto}>Cambiar contrasena</Text>
+        </Pressable>
       </ScrollView>
 
       <Pressable
@@ -138,6 +148,23 @@ export const ProfileScreen = (): ReactElement => {
 
 const crearEstilos = (tema: AppTheme) =>
   StyleSheet.create({
+  seguridadBoton: {
+    marginTop: 20,
+    minHeight: 52,
+    borderRadius: 8,
+    borderWidth: 1.2,
+    borderColor: tema.colors.accentText,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  seguridadTexto: {
+    color: tema.colors.accentText,
+    fontSize: 16,
+    lineHeight: 21,
+    fontFamily: tema.fuentes.bold,
+  },
   aparienciaBloque: {
     marginTop: 20,
     gap: 10,

@@ -101,6 +101,32 @@ export class CiudadanoRepositorySQL
     return Result.ok(true);
   }
 
+  async buscarCedulaPorUuid(uuid: string): Promise<Result<string | null>> {
+    const fila = await this.model.findOne({
+      where: { uuid },
+      include: [
+        {
+          model: Database.getInstance().models.perfil,
+          as: "perfil",
+          attributes: ["cedula_identidad"],
+        },
+      ],
+    });
+    if (!fila) return Result.noEncontrado<string | null>("Ciudadano no encontrado");
+    const perfil = fila.get("perfil") as { cedula_identidad?: string } | null;
+    return Result.ok(perfil?.cedula_identidad ?? null);
+  }
+
+  async actualizarPasswordPorUuid(
+    uuid: string,
+    passwordHash: string,
+  ): Promise<Result<boolean>> {
+    const fila = await this.model.findOne({ where: { uuid } });
+    if (!fila) return Result.noEncontrado<boolean>("Ciudadano no encontrado");
+    await fila.update({ password_hash: passwordHash });
+    return Result.ok(true);
+  }
+
   // ---- autenticacion ----------------------------------------------------
 
   async buscarCredencialPorCorreo(
