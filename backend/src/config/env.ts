@@ -35,17 +35,6 @@ export const env = {
     expiresIn: process.env.JWT_EXPIRES_IN || "15m",
     refreshDays: Number(process.env.JWT_REFRESH_DAYS || 30),
   },
-  securitySeed: {
-    enabled: bool(process.env.SECURITY_SEED_ENABLED),
-    email: process.env.SECURITY_SEED_EMAIL || "",
-    password: process.env.SECURITY_SEED_PASSWORD || "",
-    firstName: process.env.SECURITY_SEED_FIRST_NAME || "Administrador",
-    firstLastName: process.env.SECURITY_SEED_FIRST_LAST_NAME || "Sistema",
-    secondLastName: process.env.SECURITY_SEED_SECOND_LAST_NAME || "168",
-  },
-  operacionesSeed: {
-    password: process.env.OPERATIONS_SEED_PASSWORD || "Emergencias168",
-  },
   storage: {
     localDir: process.env.STORAGE_LOCAL_DIR || "uploads",
     publicUrl:

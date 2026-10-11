@@ -1,29 +1,10 @@
 import { createApp } from "./app";
 import { Database } from "./config/database";
 import { env } from "./config/env";
-import { ensureSecuritySeed } from "./seeders/securitySeed";
-import { migrarCiudadanosLegado } from "./migrations/migrarCiudadanosLegado";
-import { repuntarClavesForaneasCiudadanos } from "./migrations/repuntarClavesForaneasCiudadanos";
-import { habilitarModulosAdministrador } from "./migrations/habilitarModulosAdministrador";
 
 const start = async (): Promise<void> => {
   const db = Database.getInstance();
   await db.authenticate();
-
-  if (process.env.CREATE_DATABASE) {
-    console.log("[database] sincronizando base de datos...");
-    await db.sync(true);
-    await ensureSecuritySeed();
-    console.log("[database] tablas y seed inicial creados exitosamente");
-    await db.sequelize.close();
-    return;
-  }
-
-  await db.sync();
-  await migrarCiudadanosLegado(db.sequelize);
-  await repuntarClavesForaneasCiudadanos(db.sequelize);
-  await habilitarModulosAdministrador(db.sequelize);
-  await ensureSecuritySeed();
 
   const app = createApp();
   app.listen(env.port, () => {

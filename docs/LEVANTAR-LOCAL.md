@@ -72,12 +72,14 @@ Verificar que responde:
 netstat -ano | grep ":3306 " | grep LISTENING
 ```
 
-Si es la primera vez, cargar el esquema y los catalogos (crea la base, las 13
-tablas y los 204 centros RUES):
+Si es la primera vez (o para reiniciar la base), crear la base y ejecutar el
+script de reinicio. Borra y recrea las 13 tablas con los catalogos, el personal
+y los ciudadanos iniciales. El backend no crea tablas por su cuenta:
 
 ```bash
 cd /d/PROYECTOS/app168Expo
-"/c/wamp64/bin/mysql/mysql8.4.7/bin/mysql.exe" -h 127.0.0.1 -u root -p < docs/backend/168-emergencias-integrada.sql
+"/c/wamp64/bin/mysql/mysql8.4.7/bin/mysql.exe" -h 127.0.0.1 -u root -p -e "CREATE DATABASE IF NOT EXISTS \`168-db\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+"/c/wamp64/bin/mysql/mysql8.4.7/bin/mysql.exe" -h 127.0.0.1 -u root -p 168-db < docs/backend/reinicio-base-datos.sql
 ```
 
 ---

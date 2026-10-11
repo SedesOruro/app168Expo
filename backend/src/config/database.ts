@@ -98,8 +98,4 @@ export class Database {
   async authenticate(): Promise<void> {
     await this.sequelizeInstance.authenticate();
   }
-
-  async sync(force = false): Promise<void> {
-    await this.sequelizeInstance.sync({ force });
-  }
 }

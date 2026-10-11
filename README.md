@@ -8,8 +8,8 @@ Solución integrada con tres componentes:
 
 ## Puesta en marcha
 
-1. Ejecute `docs/backend/168-emergencias-integrada.sql` en MySQL 8. El script crea la base `168-db`, las 13 tablas, los catálogos y los 204 centros RUES.
-2. Copie `backend/.env.example` a `backend/.env`, cambie `JWT_SECRET`, configure MySQL y defina una contraseña segura para el usuario inicial.
+1. Cree la base en MySQL 8 y ejecute sobre ella `docs/backend/reinicio-base-datos.sql`. El script borra y recrea las 13 tablas, los catálogos (204 centros RUES), el personal inicial (1 administrador y 2 operadores) y 2 ciudadanos. `docs/backend/estructura-base-datos.sql` documenta solo la estructura.
+2. Copie `backend/.env.example` a `backend/.env`, cambie `JWT_SECRET`, y configure MySQL.
 3. Inicie la API:
 
    ```powershell
@@ -54,7 +54,7 @@ npm run android
 
 `HTTP_LOGGING=true` muestra una sola línea por petición con el mismo formato `morgan("dev")` utilizado por el proyecto de referencia: método, endpoint, estado, tiempo y tamaño. `DB_LOGGING=false` evita imprimir todas las consultas internas de Sequelize.
 
-Al primer arranque del backend, `SECURITY_SEED_ENABLED=true` crea el usuario administrativo definido en `backend/.env`. Desactive esa opción después de crear la cuenta y no use las credenciales de ejemplo en producción.
+El backend no crea tablas, no ejecuta migraciones ni seeders: la base se inicializa únicamente con el script de reinicio.
 
 ## Flujo operativo
 

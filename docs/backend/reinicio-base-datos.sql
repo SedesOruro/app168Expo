@@ -1,593 +1,401 @@
 -- ============================================================================
--- 168 Emergencias - Esquema integrado movil + backend + administrador
--- Motor: MySQL 8.0+
--- 13 tablas operativas: personal, ciudadanos, emergencias y evidencias
--- Incluye 204 centros de salud RUES del archivo proporcionado
--- El registro RUES 400280 no trae coordenadas ni estado y se conserva con NULL.
+-- 168 Emergencias - Reinicio completo de la base de datos para PRODUCCION
 --
--- Tablas de cuentas, para evitar confusiones entre nombres parecidos:
---   `usuario`    -> personal administrativo (administrador, operador). PK CHAR(36), se relaciona con `rol`.
---   `ciudadanos` -> cuentas de la aplicacion movil. PK BIGINT.
---   `usuarios`   -> OBSOLETA. Nombre anterior de `ciudadanos`. Este script ya no
---                   la crea y ninguna clave foranea la referencia. Se conserva
---                   en las bases existentes solo como respaldo del esquema
---                   antiguo: no escribir ni leer desde el backend.
+-- ATENCION: borra TODAS las tablas y sus datos y las vuelve a crear.
+-- Es el unico script de creacion de la base: el backend ya no crea tablas,
+-- no ejecuta migraciones ni seeders.
+--
+-- Deja cargado:
+--   * Catalogos: 204 centros de salud RUES, 5 tipos y 7 estados de emergencia.
+--   * Roles: administrador y operador.
+--   * Personal: 1 administrador y 2 operadores (cambiar contrasenas al ingresar).
+--   * Ciudadanos: 2 cuentas registradas con perfil y contacto de emergencia.
+--   * Resto de tablas (emergencias, triage, historial, evidencias, sesiones): vacias.
+-- Motor: MySQL 8.0+   Fuente: dump de central-db del 2026-10-11
+--
+-- Selecciona la base antes de ejecutar, por ejemplo:
+--   mysql -h <host> -P <puerto> -u <usuario> -p central-db < <este-archivo>.sql
+-- (en Workbench/DBeaver: marca central-db como esquema por defecto)
 -- ============================================================================
 
 SET NAMES utf8mb4;
 SET time_zone = '-04:00';
 
-CREATE DATABASE IF NOT EXISTS `168-db`
-  CHARACTER SET utf8mb4
-  COLLATE utf8mb4_0900_ai_ci;
+SET FOREIGN_KEY_CHECKS = 0;
 
-USE `168-db`;
+-- ----------------------------------------------------------------------------
+-- 1. Eliminar tablas (incluye `usuarios`, nombre obsoleto de `ciudadanos`)
+-- ----------------------------------------------------------------------------
+DROP TABLE IF EXISTS
+  `evidencias_emergencia`, `historial_emergencia`, `respuestas_triage`,
+  `emergencias`, `estados_emergencia`, `tipos_emergencia`, `centros_salud`,
+  `contactos_emergencia`, `perfiles`, `sesiones_refresh`, `ciudadanos`,
+  `usuarios`, `usuario`, `rol`;
 
--- Estructura administrativa incorporada desde el respaldo cra_nuevo.
--- Se excluyeron los JWT historicos almacenados en `devices` y la tabla legacy `role`.
-CREATE TABLE IF NOT EXISTS rol (
-  id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-  nombre VARCHAR(120) NOT NULL,
-  tipo VARCHAR(80) NOT NULL,
-  permisos TEXT NOT NULL,
-  modulos JSON DEFAULT NULL,
-  fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  fecha_modificacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  fecha_eliminacion DATETIME DEFAULT NULL,
-  PRIMARY KEY (id),
-  UNIQUE KEY uq_rol_tipo (tipo)
-) ENGINE=InnoDB;
+-- ----------------------------------------------------------------------------
+-- 2. Estructura
+-- ----------------------------------------------------------------------------
+-- Roles del personal administrativo (panel web).
+CREATE TABLE `rol` (
+  `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+  `nombre` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `tipo` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `permisos` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `modulos` json DEFAULT NULL,
+  `fecha_creacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `fecha_modificacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `fecha_eliminacion` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_rol_tipo` (`tipo`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS usuario (
-  id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-  username VARCHAR(160) NOT NULL,
-  password VARCHAR(255) NOT NULL,
-  fullname VARCHAR(220) DEFAULT '',
-  nombre VARCHAR(120) NOT NULL,
-  primer_apellido VARCHAR(120) DEFAULT '',
-  segundo_apellido VARCHAR(120) DEFAULT '',
-  ci VARCHAR(40) DEFAULT '',
-  email VARCHAR(160) NOT NULL,
-  direccion VARCHAR(220) DEFAULT '',
-  celular VARCHAR(40) DEFAULT '',
-  genero ENUM('MASCULINO','FEMENINO','NINGUNO') DEFAULT 'NINGUNO',
-  is_jefe BOOLEAN DEFAULT FALSE,
-  activo BOOLEAN DEFAULT TRUE,
-  estado ENUM('ACTIVO','INACTIVO','ELIMINADO') DEFAULT 'ACTIVO',
-  avatar VARCHAR(220) DEFAULT 'avatar_default.png',
-  fid_role CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-  devices JSON DEFAULT NULL,
-  fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  fecha_modificacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  fecha_eliminacion DATETIME DEFAULT NULL,
-  PRIMARY KEY (id),
-  UNIQUE KEY uq_usuario_username (username),
-  UNIQUE KEY uq_usuario_email (email),
-  INDEX idx_usuario_rol (fid_role, activo),
-  CONSTRAINT fk_usuario_rol FOREIGN KEY (fid_role) REFERENCES rol(id) ON DELETE RESTRICT
-) ENGINE=InnoDB;
+-- Personal administrativo: administradores y operadores.
+CREATE TABLE `usuario` (
+  `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+  `username` varchar(160) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `password` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `fullname` varchar(220) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '',
+  `nombre` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `primer_apellido` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '',
+  `segundo_apellido` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '',
+  `ci` varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '',
+  `email` varchar(160) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `direccion` varchar(220) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '',
+  `celular` varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '',
+  `genero` enum('MASCULINO','FEMENINO','NINGUNO') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'NINGUNO',
+  `is_jefe` tinyint(1) DEFAULT '0',
+  `activo` tinyint(1) DEFAULT '1',
+  `estado` enum('ACTIVO','INACTIVO','ELIMINADO') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'ACTIVO',
+  `avatar` varchar(220) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'avatar_default.png',
+  `fid_role` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+  `devices` json DEFAULT NULL,
+  `fecha_creacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `fecha_modificacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `fecha_eliminacion` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_usuario_username` (`username`),
+  UNIQUE KEY `uq_usuario_email` (`email`),
+  KEY `idx_usuario_rol` (`fid_role`,`activo`),
+  CONSTRAINT `fk_usuario_rol` FOREIGN KEY (`fid_role`) REFERENCES `rol` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO rol (id, nombre, tipo, permisos, modulos) VALUES
-  (
-    '00000000-0000-0000-0000-000000000002',
-    'Administrador',
-    'administrador',
-    '{"read":true,"create":true,"edit":true,"remove":true}',
-    '[{"id":"emergencias","name":"emergencias","path":"/emergencias","title":"Emergencias"},{"id":"ciudadanos","name":"ciudadanos","path":"/ciudadanos","title":"Ciudadanos"},{"id":"centros-salud","name":"centros-salud","path":"/centros-salud","title":"Centros de salud"},{"id":"usuarios","name":"usuarios","path":"/usuarios","title":"Usuarios"},{"id":"roles","name":"roles","path":"/roles","title":"Roles"}]'
-  ),
-  (
-    '00000000-0000-0000-0000-000000000003',
-    'Operador 168',
-    'operador',
-    '{"read":true,"edit":true,"send":true}',
-    '[{"id":"emergencias","name":"emergencias","path":"/emergencias","title":"Emergencias"},{"id":"ciudadanos","name":"ciudadanos","path":"/ciudadanos","title":"Ciudadanos"}]'
-  )
-ON DUPLICATE KEY UPDATE
-  nombre = VALUES(nombre),
-  permisos = VALUES(permisos),
-  modulos = VALUES(modulos),
-  fecha_eliminacion = NULL;
+-- Cuentas de la aplicacion movil.
+CREATE TABLE `ciudadanos` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `uuid` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+  `email` varchar(190) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `telefono` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `password_hash` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `rol` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'CIUDADANO',
+  `estado` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'ACTIVO',
+  `ultimo_acceso_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL,
+  `updated_at` datetime NOT NULL,
+  `deleted_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uuid` (`uuid`),
+  UNIQUE KEY `email` (`email`),
+  UNIQUE KEY `telefono` (`telefono`),
+  KEY `idx_ciudadanos_estado` (`estado`,`rol`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 1. Cuenta de ciudadano de la aplicacion movil: acceso, rol y estado.
--- El esquema original llamaba `usuarios` a esta tabla. El backend usa
--- `ciudadanos` para no confundirla con `usuario` (personal administrativo);
--- mas abajo hay un bloque idempotente que migra las bases creadas con el
--- nombre anterior.
--- La tabla `usuarios` queda obsoleta a partir de aqui: no se elimina para no
--- perder datos en entornos que aun no migraron, pero ninguna clave foranea la
--- referencia y ningun modelo del backend la mapea. Cualquier cuenta nueva de
--- ciudadano va exclusivamente en `ciudadanos`.
-CREATE TABLE IF NOT EXISTS ciudadanos (
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  uuid CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-  email VARCHAR(190) NOT NULL,
-  telefono VARCHAR(30) NULL,
-  password_hash VARCHAR(255) NOT NULL,
-  rol VARCHAR(30) NOT NULL DEFAULT 'CIUDADANO',
-  estado VARCHAR(30) NOT NULL DEFAULT 'ACTIVO',
-  ultimo_acceso_at DATETIME NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  deleted_at DATETIME NULL,
-  UNIQUE KEY uq_ciudadanos_uuid (uuid),
-  UNIQUE KEY uq_ciudadanos_email (email),
-  UNIQUE KEY uq_ciudadanos_telefono (telefono),
-  INDEX idx_ciudadanos_estado (estado, rol)
-) ENGINE=InnoDB;
+-- Refresh tokens JWT rotativos del ciudadano (solo el hash).
+CREATE TABLE `sesiones_refresh` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `usuario_id` bigint unsigned NOT NULL,
+  `jti` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `token_hash` char(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `dispositivo` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ip_origen` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `expira_at` datetime NOT NULL,
+  `revocado_at` datetime DEFAULT NULL,
+  `reemplazado_por_jti` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_sesiones_refresh_jti` (`jti`),
+  UNIQUE KEY `uq_sesiones_refresh_hash` (`token_hash`),
+  KEY `idx_sesiones_refresh_usuario` (`usuario_id`,`revocado_at`,`expira_at`),
+  CONSTRAINT `fk_sesiones_refresh_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `ciudadanos` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Base creada con el nombre anterior: se copian las cuentas conservando el id
--- para que las claves foraneas de perfiles, contactos y emergencias sigan siendo validas.
-SET @ddl = IF(
-  EXISTS(
-    SELECT 1 FROM information_schema.tables
-    WHERE table_schema = DATABASE() AND table_name = 'usuarios'
-  ),
-  'INSERT INTO ciudadanos (id, uuid, email, telefono, password_hash, rol, estado, ultimo_acceso_at, created_at, updated_at, deleted_at)
-     SELECT id, uuid, email, telefono, password_hash, rol, estado, ultimo_acceso_at, created_at, updated_at, deleted_at
-     FROM usuarios WHERE password_hash IS NOT NULL
-     ON DUPLICATE KEY UPDATE email = VALUES(email)',
-  'SELECT 1'
-);
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+-- Datos personales, medicos y aceptacion de terminos del ciudadano.
+CREATE TABLE `perfiles` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `usuario_id` bigint unsigned NOT NULL,
+  `nombres` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `apellidos` varchar(160) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `cedula_identidad` varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `complemento_ci` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `fecha_nacimiento` date NOT NULL,
+  `sexo` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `tipo_sangre` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `direccion` varchar(300) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `departamento` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `municipio` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `alergias` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `enfermedades_cronicas` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `medicamentos_actuales` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `condiciones_relevantes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `seguro_medico` varchar(160) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `numero_seguro` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `terminos_version` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `terminos_aceptados_at` datetime NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_perfiles_usuario` (`usuario_id`),
+  UNIQUE KEY `uq_perfiles_ci` (`cedula_identidad`,`complemento_ci`),
+  CONSTRAINT `fk_perfiles_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `ciudadanos` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 2. Refresh tokens JWT rotativos. Guardar solo el hash del token.
-CREATE TABLE IF NOT EXISTS sesiones_refresh (
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  usuario_id BIGINT UNSIGNED NOT NULL,
-  jti CHAR(36) NOT NULL,
-  token_hash CHAR(64) NOT NULL,
-  dispositivo VARCHAR(255) NULL,
-  ip_origen VARCHAR(45) NULL,
-  expira_at DATETIME NOT NULL,
-  revocado_at DATETIME NULL,
-  reemplazado_por_jti CHAR(36) NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_sesiones_refresh_jti (jti),
-  UNIQUE KEY uq_sesiones_refresh_hash (token_hash),
-  INDEX idx_sesiones_refresh_usuario (usuario_id, revocado_at, expira_at),
-  CONSTRAINT fk_sesiones_refresh_usuario FOREIGN KEY (usuario_id) REFERENCES ciudadanos(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+-- Contactos a avisar durante una emergencia.
+CREATE TABLE `contactos_emergencia` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `usuario_id` bigint unsigned NOT NULL,
+  `nombre_completo` varchar(180) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `parentesco` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `telefono` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `telefono_alternativo` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `es_principal` tinyint(1) NOT NULL DEFAULT '0',
+  `activo` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_contactos_usuario` (`usuario_id`,`activo`,`es_principal`),
+  CONSTRAINT `fk_contactos_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `ciudadanos` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 3. Datos personales, médicos y aceptación de términos del registro multipaso.
-CREATE TABLE IF NOT EXISTS perfiles (
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  usuario_id BIGINT UNSIGNED NOT NULL,
-  nombres VARCHAR(120) NOT NULL,
-  apellidos VARCHAR(160) NOT NULL,
-  cedula_identidad VARCHAR(40) NOT NULL,
-  complemento_ci VARCHAR(10) NULL,
-  fecha_nacimiento DATE NOT NULL,
-  sexo VARCHAR(30) NULL,
-  tipo_sangre VARCHAR(10) NULL,
-  direccion VARCHAR(300) NULL,
-  departamento VARCHAR(100) NULL,
-  municipio VARCHAR(120) NULL,
-  alergias TEXT NULL,
-  enfermedades_cronicas TEXT NULL,
-  medicamentos_actuales TEXT NULL,
-  condiciones_relevantes TEXT NULL,
-  seguro_medico VARCHAR(160) NULL,
-  numero_seguro VARCHAR(100) NULL,
-  terminos_version VARCHAR(30) NOT NULL,
-  terminos_aceptados_at DATETIME NOT NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_perfiles_usuario (usuario_id),
-  UNIQUE KEY uq_perfiles_ci (cedula_identidad, complemento_ci),
-  CONSTRAINT fk_perfiles_usuario FOREIGN KEY (usuario_id) REFERENCES ciudadanos(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+-- Catalogo RUES de centros de salud.
+CREATE TABLE `centros_salud` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `uuid` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `numero_reporte` int unsigned DEFAULT NULL,
+  `codigo_rues` varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `departamento` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `red_salud` varchar(160) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `municipio` varchar(160) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nombre` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `subsector` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `institucion` varchar(160) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `nivel` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `tipo` varchar(160) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ambito` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `localidad` varchar(180) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `direccion` varchar(700) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `latitud` decimal(21,18) DEFAULT NULL,
+  `longitud` decimal(21,18) DEFAULT NULL,
+  `cerca_frontera` tinyint(1) NOT NULL DEFAULT '0',
+  `distancia_frontera_km` decimal(10,2) DEFAULT NULL,
+  `estado_fuente` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `fecha_registro_fuente` date DEFAULT NULL,
+  `fecha_modificacion_fuente` date DEFAULT NULL,
+  `fuente_archivo` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `gestion_fuente` smallint unsigned NOT NULL,
+  `activo` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_centros_salud_uuid` (`uuid`),
+  UNIQUE KEY `uq_centros_salud_codigo_rues` (`codigo_rues`),
+  KEY `idx_centros_salud_ubicacion` (`departamento`,`municipio`,`localidad`),
+  KEY `idx_centros_salud_red` (`red_salud`,`activo`),
+  KEY `idx_centros_salud_coordenadas` (`latitud`,`longitud`),
+  FULLTEXT KEY `ftx_centros_salud_busqueda` (`nombre`,`direccion`,`localidad`,`municipio`),
+  CONSTRAINT `chk_centros_salud_distancia` CHECK (((`distancia_frontera_km` is null) or (`distancia_frontera_km` >= 0))),
+  CONSTRAINT `chk_centros_salud_latitud` CHECK (((`latitud` is null) or (`latitud` between -(90) and 90))),
+  CONSTRAINT `chk_centros_salud_longitud` CHECK (((`longitud` is null) or (`longitud` between -(180) and 180)))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 4. Contactos a avisar durante una emergencia.
-CREATE TABLE IF NOT EXISTS contactos_emergencia (
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  usuario_id BIGINT UNSIGNED NOT NULL,
-  nombre_completo VARCHAR(180) NOT NULL,
-  parentesco VARCHAR(80) NOT NULL,
-  telefono VARCHAR(30) NOT NULL,
-  telefono_alternativo VARCHAR(30) NULL,
-  es_principal BOOLEAN NOT NULL DEFAULT FALSE,
-  activo BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_contactos_usuario (usuario_id, activo, es_principal),
-  CONSTRAINT fk_contactos_usuario FOREIGN KEY (usuario_id) REFERENCES ciudadanos(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+-- Catalogo de tipos de emergencia.
+CREATE TABLE `tipos_emergencia` (
+  `id` smallint unsigned NOT NULL AUTO_INCREMENT,
+  `codigo` varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nombre` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `descripcion` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `icono` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `color_hex` char(7) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `orden` smallint unsigned NOT NULL DEFAULT '0',
+  `activo` tinyint(1) NOT NULL DEFAULT '1',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_tipos_emergencia_codigo` (`codigo`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 5. Catálogo RUES completo utilizado para búsquedas por cercanía.
-CREATE TABLE IF NOT EXISTS centros_salud (
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  uuid CHAR(36) NOT NULL,
-  numero_reporte INT UNSIGNED NULL,
-  codigo_rues VARCHAR(40) NOT NULL,
-  departamento VARCHAR(100) NOT NULL,
-  red_salud VARCHAR(160) NOT NULL,
-  municipio VARCHAR(160) NOT NULL,
-  nombre VARCHAR(255) NOT NULL,
-  subsector VARCHAR(120) NULL,
-  institucion VARCHAR(160) NULL,
-  nivel VARCHAR(100) NULL,
-  tipo VARCHAR(160) NULL,
-  ambito VARCHAR(80) NULL,
-  localidad VARCHAR(180) NULL,
-  direccion VARCHAR(700) NULL,
-  latitud DECIMAL(21,18) NULL,
-  longitud DECIMAL(21,18) NULL,
-  cerca_frontera BOOLEAN NOT NULL DEFAULT FALSE,
-  distancia_frontera_km DECIMAL(10,2) NULL,
-  estado_fuente VARCHAR(80) NULL,
-  fecha_registro_fuente DATE NULL,
-  fecha_modificacion_fuente DATE NULL,
-  fuente_archivo VARCHAR(255) NOT NULL,
-  gestion_fuente SMALLINT UNSIGNED NOT NULL,
-  activo BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_centros_salud_uuid (uuid),
-  UNIQUE KEY uq_centros_salud_codigo_rues (codigo_rues),
-  INDEX idx_centros_salud_ubicacion (departamento, municipio, localidad),
-  INDEX idx_centros_salud_red (red_salud, activo),
-  INDEX idx_centros_salud_coordenadas (latitud, longitud),
-  FULLTEXT KEY ftx_centros_salud_busqueda (nombre, direccion, localidad, municipio),
-  CONSTRAINT chk_centros_salud_latitud CHECK (latitud IS NULL OR latitud BETWEEN -90 AND 90),
-  CONSTRAINT chk_centros_salud_longitud CHECK (longitud IS NULL OR longitud BETWEEN -180 AND 180),
-  CONSTRAINT chk_centros_salud_distancia CHECK (distancia_frontera_km IS NULL OR distancia_frontera_km >= 0)
-) ENGINE=InnoDB;
+-- Catalogo de estados de una emergencia.
+CREATE TABLE `estados_emergencia` (
+  `id` smallint unsigned NOT NULL AUTO_INCREMENT,
+  `codigo` varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nombre` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `es_final` tinyint(1) NOT NULL DEFAULT '0',
+  `orden` smallint unsigned NOT NULL DEFAULT '0',
+  `activo` tinyint(1) NOT NULL DEFAULT '1',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_estados_emergencia_codigo` (`codigo`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 6. Tipos presentados en el inicio del flujo de solicitud de ayuda.
-CREATE TABLE IF NOT EXISTS tipos_emergencia (
-  id SMALLINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  codigo VARCHAR(40) NOT NULL,
-  nombre VARCHAR(100) NOT NULL,
-  descripcion VARCHAR(255) NULL,
-  icono VARCHAR(100) NULL,
-  color_hex CHAR(7) NULL,
-  orden SMALLINT UNSIGNED NOT NULL DEFAULT 0,
-  activo BOOLEAN NOT NULL DEFAULT TRUE,
-  UNIQUE KEY uq_tipos_emergencia_codigo (codigo)
-) ENGINE=InnoDB;
+-- Solicitud principal de emergencia.
+CREATE TABLE `emergencias` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `uuid` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `codigo_publico` varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `idempotency_key` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `usuario_id` bigint unsigned NOT NULL,
+  `tipo_emergencia_id` smallint unsigned NOT NULL,
+  `estado_id` smallint unsigned NOT NULL,
+  `centro_salud_sugerido_id` bigint unsigned DEFAULT NULL,
+  `operador_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
+  `gravedad` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `puntaje_triage` int NOT NULL DEFAULT '0',
+  `descripcion` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `cantidad_afectados` smallint unsigned NOT NULL DEFAULT '1',
+  `latitud` decimal(21,18) NOT NULL,
+  `longitud` decimal(21,18) NOT NULL,
+  `precision_metros` decimal(10,2) DEFAULT NULL,
+  `direccion_referencia` varchar(700) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ubicacion_confirmada` tinyint(1) NOT NULL DEFAULT '0',
+  `puede_hablar` tinyint(1) NOT NULL DEFAULT '1',
+  `metadata` json DEFAULT NULL,
+  `reportada_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `finalizada_at` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_emergencias_uuid` (`uuid`),
+  UNIQUE KEY `uq_emergencias_codigo_publico` (`codigo_publico`),
+  UNIQUE KEY `uq_emergencias_idempotency` (`usuario_id`,`idempotency_key`),
+  KEY `idx_emergencias_usuario` (`usuario_id`,`created_at`),
+  KEY `idx_emergencias_estado` (`estado_id`,`gravedad`,`created_at`),
+  KEY `idx_emergencias_coordenadas` (`latitud`,`longitud`),
+  KEY `fk_emergencias_tipo` (`tipo_emergencia_id`),
+  KEY `fk_emergencias_centro` (`centro_salud_sugerido_id`),
+  KEY `fk_emergencias_operador` (`operador_id`),
+  CONSTRAINT `fk_emergencias_centro` FOREIGN KEY (`centro_salud_sugerido_id`) REFERENCES `centros_salud` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_emergencias_estado` FOREIGN KEY (`estado_id`) REFERENCES `estados_emergencia` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_emergencias_operador` FOREIGN KEY (`operador_id`) REFERENCES `usuario` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_emergencias_tipo` FOREIGN KEY (`tipo_emergencia_id`) REFERENCES `tipos_emergencia` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_emergencias_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `ciudadanos` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `chk_emergencias_afectados` CHECK ((`cantidad_afectados` > 0)),
+  CONSTRAINT `chk_emergencias_latitud` CHECK ((`latitud` between -(90) and 90)),
+  CONSTRAINT `chk_emergencias_longitud` CHECK ((`longitud` between -(180) and 180))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 7. Estados mínimos para mostrar el seguimiento de una solicitud.
-CREATE TABLE IF NOT EXISTS estados_emergencia (
-  id SMALLINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  codigo VARCHAR(40) NOT NULL,
-  nombre VARCHAR(100) NOT NULL,
-  es_final BOOLEAN NOT NULL DEFAULT FALSE,
-  orden SMALLINT UNSIGNED NOT NULL DEFAULT 0,
-  activo BOOLEAN NOT NULL DEFAULT TRUE,
-  UNIQUE KEY uq_estados_emergencia_codigo (codigo)
-) ENGINE=InnoDB;
+-- Respuestas del triage de cada emergencia.
+CREATE TABLE `respuestas_triage` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `emergencia_id` bigint unsigned NOT NULL,
+  `pregunta_codigo` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `pregunta_texto` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `opcion_codigo` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `respuesta_texto` varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `respuesta_numero` decimal(12,2) DEFAULT NULL,
+  `respuesta_booleano` tinyint(1) DEFAULT NULL,
+  `peso_aplicado` smallint NOT NULL DEFAULT '0',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_respuestas_triage_pregunta` (`emergencia_id`,`pregunta_codigo`),
+  CONSTRAINT `fk_respuestas_triage_emergencia` FOREIGN KEY (`emergencia_id`) REFERENCES `emergencias` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 8. Solicitud principal de emergencia.
-CREATE TABLE IF NOT EXISTS emergencias (
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  uuid CHAR(36) NOT NULL,
-  codigo_publico VARCHAR(40) NOT NULL,
-  idempotency_key CHAR(36) NOT NULL,
-  usuario_id BIGINT UNSIGNED NOT NULL,
-  tipo_emergencia_id SMALLINT UNSIGNED NOT NULL,
-  estado_id SMALLINT UNSIGNED NOT NULL,
-  centro_salud_sugerido_id BIGINT UNSIGNED NULL,
-  operador_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
-  gravedad VARCHAR(30) NULL,
-  puntaje_triage INT NOT NULL DEFAULT 0,
-  descripcion TEXT NULL,
-  cantidad_afectados SMALLINT UNSIGNED NOT NULL DEFAULT 1,
-  latitud DECIMAL(21,18) NOT NULL,
-  longitud DECIMAL(21,18) NOT NULL,
-  precision_metros DECIMAL(10,2) NULL,
-  direccion_referencia VARCHAR(700) NULL,
-  ubicacion_confirmada BOOLEAN NOT NULL DEFAULT FALSE,
-  puede_hablar BOOLEAN NOT NULL DEFAULT TRUE,
-  metadata JSON NULL,
-  reportada_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  finalizada_at DATETIME NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_emergencias_uuid (uuid),
-  UNIQUE KEY uq_emergencias_codigo_publico (codigo_publico),
-  UNIQUE KEY uq_emergencias_idempotency (usuario_id, idempotency_key),
-  INDEX idx_emergencias_usuario (usuario_id, created_at),
-  INDEX idx_emergencias_estado (estado_id, gravedad, created_at),
-  INDEX idx_emergencias_coordenadas (latitud, longitud),
-  CONSTRAINT fk_emergencias_usuario FOREIGN KEY (usuario_id) REFERENCES ciudadanos(id) ON DELETE RESTRICT,
-  CONSTRAINT fk_emergencias_tipo FOREIGN KEY (tipo_emergencia_id) REFERENCES tipos_emergencia(id) ON DELETE RESTRICT,
-  CONSTRAINT fk_emergencias_estado FOREIGN KEY (estado_id) REFERENCES estados_emergencia(id) ON DELETE RESTRICT,
-  CONSTRAINT fk_emergencias_centro FOREIGN KEY (centro_salud_sugerido_id) REFERENCES centros_salud(id) ON DELETE SET NULL,
-  CONSTRAINT fk_emergencias_operador FOREIGN KEY (operador_id) REFERENCES usuario(id) ON DELETE SET NULL,
-  CONSTRAINT chk_emergencias_latitud CHECK (latitud BETWEEN -90 AND 90),
-  CONSTRAINT chk_emergencias_longitud CHECK (longitud BETWEEN -180 AND 180),
-  CONSTRAINT chk_emergencias_afectados CHECK (cantidad_afectados > 0)
-) ENGINE=InnoDB;
+-- Linea de tiempo de estados de cada emergencia.
+CREATE TABLE `historial_emergencia` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `emergencia_id` bigint unsigned NOT NULL,
+  `estado_anterior_id` smallint unsigned DEFAULT NULL,
+  `estado_nuevo_id` smallint unsigned NOT NULL,
+  `actor_usuario_id` bigint unsigned DEFAULT NULL,
+  `actor_admin_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
+  `observacion` varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `latitud` decimal(21,18) DEFAULT NULL,
+  `longitud` decimal(21,18) DEFAULT NULL,
+  `metadata` json DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_historial_emergencia` (`emergencia_id`,`created_at`),
+  KEY `fk_historial_estado_anterior` (`estado_anterior_id`),
+  KEY `fk_historial_estado_nuevo` (`estado_nuevo_id`),
+  KEY `fk_historial_actor_admin` (`actor_admin_id`),
+  KEY `fk_historial_actor` (`actor_usuario_id`),
+  CONSTRAINT `fk_historial_actor` FOREIGN KEY (`actor_usuario_id`) REFERENCES `ciudadanos` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_historial_actor_admin` FOREIGN KEY (`actor_admin_id`) REFERENCES `usuario` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_historial_emergencia` FOREIGN KEY (`emergencia_id`) REFERENCES `emergencias` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_historial_estado_anterior` FOREIGN KEY (`estado_anterior_id`) REFERENCES `estados_emergencia` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_historial_estado_nuevo` FOREIGN KEY (`estado_nuevo_id`) REFERENCES `estados_emergencia` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Compatibilidad con la base movil anterior: CREATE TABLE IF NOT EXISTS no
--- agrega columnas cuando la tabla ya existe, por lo que estas migraciones son
--- deliberadamente idempotentes.
-SET @ddl = IF(
-  EXISTS(
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema = DATABASE() AND table_name = 'emergencias' AND column_name = 'operador_id'
-  ),
-  'SELECT 1',
-  'ALTER TABLE emergencias ADD COLUMN operador_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL AFTER centro_salud_sugerido_id'
-);
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+-- Evidencias: nota, foto o audio.
+CREATE TABLE `evidencias_emergencia` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `uuid` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `emergencia_id` bigint unsigned NOT NULL,
+  `tipo` enum('NOTA','FOTO','AUDIO') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `contenido` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `archivo_url` varchar(700) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `mime_type` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `duracion_segundos` smallint unsigned DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_evidencias_uuid` (`uuid`),
+  KEY `idx_evidencias_emergencia` (`emergencia_id`,`created_at`),
+  CONSTRAINT `fk_evidencias_emergencia` FOREIGN KEY (`emergencia_id`) REFERENCES `emergencias` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_evidencia_contenido` CHECK ((((`tipo` = _utf8mb4'NOTA') and (`contenido` is not null)) or ((`tipo` in (_utf8mb4'FOTO',_utf8mb4'AUDIO')) and (`archivo_url` is not null))))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-SET @ddl = IF(
-  EXISTS(
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema = DATABASE() AND table_name = 'emergencias' AND column_name = 'puede_hablar'
-  ),
-  'SELECT 1',
-  'ALTER TABLE emergencias ADD COLUMN puede_hablar BOOLEAN NOT NULL DEFAULT TRUE AFTER ubicacion_confirmada'
-);
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+SET FOREIGN_KEY_CHECKS = 1;
 
-SET @ddl = IF(
-  EXISTS(
-    SELECT 1 FROM information_schema.table_constraints
-    WHERE table_schema = DATABASE() AND table_name = 'emergencias' AND constraint_name = 'fk_emergencias_operador'
-  ),
-  'SELECT 1',
-  'ALTER TABLE emergencias ADD CONSTRAINT fk_emergencias_operador FOREIGN KEY (operador_id) REFERENCES usuario(id) ON DELETE SET NULL'
-);
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+START TRANSACTION;
 
--- 9. Respuestas de triage. Las preguntas se definen inicialmente en backend/configuración.
-CREATE TABLE IF NOT EXISTS respuestas_triage (
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  emergencia_id BIGINT UNSIGNED NOT NULL,
-  pregunta_codigo VARCHAR(60) NOT NULL,
-  pregunta_texto VARCHAR(500) NOT NULL,
-  opcion_codigo VARCHAR(60) NULL,
-  respuesta_texto VARCHAR(1000) NULL,
-  respuesta_numero DECIMAL(12,2) NULL,
-  respuesta_booleano BOOLEAN NULL,
-  peso_aplicado SMALLINT NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_respuestas_triage_pregunta (emergencia_id, pregunta_codigo),
-  CONSTRAINT fk_respuestas_triage_emergencia FOREIGN KEY (emergencia_id) REFERENCES emergencias(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+-- ----------------------------------------------------------------------------
+-- 3. Roles y personal administrativo
+-- ----------------------------------------------------------------------------
+INSERT INTO `rol` (`id`, `nombre`, `tipo`, `permisos`, `modulos`) VALUES
+  ('00000000-0000-0000-0000-000000000002', 'Administrador', 'administrador',
+   '{"read":true,"create":true,"edit":true,"remove":true}',
+   '[{"id":"emergencias","name":"emergencias","path":"/emergencias","title":"Emergencias","icon":"emergencias","color":"primary"},{"id":"ciudadanos","name":"ciudadanos","path":"/ciudadanos","title":"Ciudadanos","icon":"ciudadanos","color":"primary"},{"id":"centros-salud","name":"centros-salud","path":"/centros-salud","title":"Centros de salud","icon":"centros-salud","color":"primary"},{"id":"usuarios","name":"usuarios","path":"/usuarios","title":"Usuarios","icon":"usuarios","color":"primary"},{"id":"roles","name":"roles","path":"/roles","title":"Roles","icon":"roles","color":"primary"}]'),
+  ('00000000-0000-0000-0000-000000000003', 'Operador 168', 'operador',
+   '{"read":true,"edit":true,"send":true}',
+   '[{"id":"emergencias","name":"emergencias","path":"/emergencias","title":"Emergencias","icon":"emergencias","color":"primary"},{"id":"ciudadanos","name":"ciudadanos","path":"/ciudadanos","title":"Ciudadanos","icon":"ciudadanos","color":"primary"}]');
 
--- 10. Línea de tiempo de estados para el seguimiento.
-CREATE TABLE IF NOT EXISTS historial_emergencia (
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  emergencia_id BIGINT UNSIGNED NOT NULL,
-  estado_anterior_id SMALLINT UNSIGNED NULL,
-  estado_nuevo_id SMALLINT UNSIGNED NOT NULL,
-  actor_usuario_id BIGINT UNSIGNED NULL,
-  actor_admin_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
-  observacion VARCHAR(1000) NULL,
-  latitud DECIMAL(21,18) NULL,
-  longitud DECIMAL(21,18) NULL,
-  metadata JSON NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_historial_emergencia (emergencia_id, created_at),
-  CONSTRAINT fk_historial_emergencia FOREIGN KEY (emergencia_id) REFERENCES emergencias(id) ON DELETE CASCADE,
-  CONSTRAINT fk_historial_estado_anterior FOREIGN KEY (estado_anterior_id) REFERENCES estados_emergencia(id) ON DELETE SET NULL,
-  CONSTRAINT fk_historial_estado_nuevo FOREIGN KEY (estado_nuevo_id) REFERENCES estados_emergencia(id) ON DELETE RESTRICT,
-  CONSTRAINT fk_historial_actor FOREIGN KEY (actor_usuario_id) REFERENCES ciudadanos(id) ON DELETE SET NULL,
-  CONSTRAINT fk_historial_actor_admin FOREIGN KEY (actor_admin_id) REFERENCES usuario(id) ON DELETE SET NULL
-) ENGINE=InnoDB;
+INSERT INTO `usuario` (`id`, `username`, `password`, `fullname`, `nombre`, `primer_apellido`, `segundo_apellido`, `ci`, `email`, `direccion`, `celular`, `genero`, `is_jefe`, `activo`, `estado`, `avatar`, `fid_role`) VALUES
+  ('8f3c2a1e-5b7d-4c90-a1e2-3d4f5a6b7c01', 'admin@gmail.com', '$2b$10$xo8apEBo.ld1CKggXfmS4.rgEVjUUL6cnoxSW/GmHbwQI0AD9LH5K', 'Carla Mendoza Rojas', 'Carla', 'Mendoza', 'Rojas', '6123457', 'admin@gmail.com', 'Av. 6 de Agosto 1180, Oruro', '72451890', 'FEMENINO', FALSE, TRUE, 'ACTIVO', 'avatar_default.png', '00000000-0000-0000-0000-000000000002'),
+  ('8f3c2a1e-5b7d-4c90-a1e2-3d4f5a6b7c02', 'operador1@gmail.com', '$2b$10$KrUjHrMr2/cmYU84mv5yA.uq9EcnLw4i47Wsl/tBvIOsXnSrRiCmu', 'Jorge Quispe Mamani', 'Jorge', 'Quispe', 'Mamani', '5987341', 'operador1@gmail.com', 'Calle Junin 455, Oruro', '71893402', 'MASCULINO', FALSE, TRUE, 'ACTIVO', 'avatar_default.png', '00000000-0000-0000-0000-000000000003'),
+  ('8f3c2a1e-5b7d-4c90-a1e2-3d4f5a6b7c03', 'operador2@gmail.com', '$2b$10$0YB1Y7QHws.AAOFtubgwGOud0kFmHamzqswPXrT6Ie4xPIZsMj8tC', 'Lucia Choque Vargas', 'Lucia', 'Choque', 'Vargas', '7034518', 'operador2@gmail.com', 'Calle Potosi 820, Oruro', '76120458', 'FEMENINO', FALSE, TRUE, 'ACTIVO', 'avatar_default.png', '00000000-0000-0000-0000-000000000003');
 
-SET @ddl = IF(
-  EXISTS(
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema = DATABASE() AND table_name = 'historial_emergencia' AND column_name = 'actor_admin_id'
-  ),
-  'SELECT 1',
-  'ALTER TABLE historial_emergencia ADD COLUMN actor_admin_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL AFTER actor_usuario_id'
-);
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+-- ----------------------------------------------------------------------------
+-- 4. Ciudadanos registrados (app movil)
+-- ----------------------------------------------------------------------------
+INSERT INTO `ciudadanos` (`id`, `uuid`, `email`, `telefono`, `password_hash`, `rol`, `estado`, `created_at`, `updated_at`) VALUES
+  (1, 'b2d4f6a8-1c3e-4a5b-9d7f-0e2a4c6e8a01', 'mariela.flores@gmail.com', '73214568', '$2b$10$FbBJoyuLzcORlTJ/wCq.4.EqVBVO1WgvQ4xubIG65NSZGninelmSi', 'CIUDADANO', 'ACTIVO', NOW(), NOW()),
+  (2, 'b2d4f6a8-1c3e-4a5b-9d7f-0e2a4c6e8a02', 'rodrigo.gutierrez@gmail.com', '69875412', '$2b$10$gUgWNAFm7aX0l4T23vANs.N61g3AozI.1BD3o2XZ/Cp6XS3V2H/H6', 'CIUDADANO', 'ACTIVO', NOW(), NOW());
 
-SET @ddl = IF(
-  EXISTS(
-    SELECT 1 FROM information_schema.table_constraints
-    WHERE table_schema = DATABASE() AND table_name = 'historial_emergencia' AND constraint_name = 'fk_historial_actor_admin'
-  ),
-  'SELECT 1',
-  'ALTER TABLE historial_emergencia ADD CONSTRAINT fk_historial_actor_admin FOREIGN KEY (actor_admin_id) REFERENCES usuario(id) ON DELETE SET NULL'
-);
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+INSERT INTO `perfiles` (`usuario_id`, `nombres`, `apellidos`, `cedula_identidad`, `complemento_ci`, `fecha_nacimiento`, `sexo`, `tipo_sangre`, `direccion`, `departamento`, `municipio`, `alergias`, `enfermedades_cronicas`, `medicamentos_actuales`, `condiciones_relevantes`, `seguro_medico`, `numero_seguro`, `terminos_version`, `terminos_aceptados_at`) VALUES
+  (1, 'Mariela Andrea', 'Flores Huanca', '7245981', NULL, '1990-07-14', 'FEMENINO', 'O+', 'Calle Soria Galvarro 735, zona central', 'Oruro', 'Oruro', 'Penicilina', 'Ninguna', 'Ninguno', 'Ninguna', 'Caja Nacional de Salud', 'CNS-458712', '1.0', NOW()),
+  (2, 'Rodrigo Daniel', 'Gutierrez Colque', '6893124', NULL, '1985-11-02', 'MASCULINO', 'A+', 'Av. Dehene 1420, zona sur', 'Oruro', 'Oruro', 'Ninguna', 'Hipertension arterial', 'Losartan 50 mg diario', 'Ninguna', 'Caja Petrolera de Salud', 'CPS-220931', '1.0', NOW());
 
--- 13. Evidencias opcionales de una emergencia: nota, fotografia o audio.
-CREATE TABLE IF NOT EXISTS evidencias_emergencia (
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  uuid CHAR(36) NOT NULL,
-  emergencia_id BIGINT UNSIGNED NOT NULL,
-  tipo ENUM('NOTA','FOTO','AUDIO') NOT NULL,
-  contenido TEXT NULL,
-  archivo_url VARCHAR(700) NULL,
-  mime_type VARCHAR(120) NULL,
-  duracion_segundos SMALLINT UNSIGNED NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_evidencias_uuid (uuid),
-  INDEX idx_evidencias_emergencia (emergencia_id, created_at),
-  CONSTRAINT fk_evidencias_emergencia FOREIGN KEY (emergencia_id) REFERENCES emergencias(id) ON DELETE CASCADE,
-  CONSTRAINT chk_evidencia_contenido CHECK (
-    (tipo = 'NOTA' AND contenido IS NOT NULL) OR
-    (tipo IN ('FOTO','AUDIO') AND archivo_url IS NOT NULL)
-  )
-) ENGINE=InnoDB;
+INSERT INTO `contactos_emergencia` (`usuario_id`, `nombre_completo`, `parentesco`, `telefono`, `telefono_alternativo`, `es_principal`, `activo`) VALUES
+  (1, 'Rosa Huanca Mamani', 'MADRE', '72145896', NULL, TRUE, TRUE),
+  (2, 'Patricia Rocha Lima', 'ESPOSA', '71569823', '52-41236', TRUE, TRUE);
 
--- Repunte idempotente de las cuentas de ciudadano. Las bases creadas con el
--- esquema anterior mantienen estas claves foraneas apuntando a `usuarios`, lo
--- que impedia registrar perfiles, contactos y emergencias de cuentas nuevas.
-
-SET @ddl = IF(
-  EXISTS(
-    SELECT 1 FROM information_schema.referential_constraints
-    WHERE constraint_schema = DATABASE()
-      AND table_name = 'perfiles'
-      AND constraint_name = 'fk_perfiles_usuario'
-      AND referenced_table_name = 'usuarios'
-  ),
-  'ALTER TABLE perfiles DROP FOREIGN KEY fk_perfiles_usuario',
-  'SELECT 1'
-);
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
-SET @ddl = IF(
-  EXISTS(
-    SELECT 1 FROM information_schema.referential_constraints
-    WHERE constraint_schema = DATABASE()
-      AND table_name = 'perfiles'
-      AND constraint_name = 'fk_perfiles_usuario'
-  ),
-  'SELECT 1',
-  'ALTER TABLE perfiles ADD CONSTRAINT fk_perfiles_usuario FOREIGN KEY (usuario_id) REFERENCES ciudadanos(id) ON DELETE CASCADE'
-);
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
-SET @ddl = IF(
-  EXISTS(
-    SELECT 1 FROM information_schema.referential_constraints
-    WHERE constraint_schema = DATABASE()
-      AND table_name = 'contactos_emergencia'
-      AND constraint_name = 'fk_contactos_usuario'
-      AND referenced_table_name = 'usuarios'
-  ),
-  'ALTER TABLE contactos_emergencia DROP FOREIGN KEY fk_contactos_usuario',
-  'SELECT 1'
-);
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
-SET @ddl = IF(
-  EXISTS(
-    SELECT 1 FROM information_schema.referential_constraints
-    WHERE constraint_schema = DATABASE()
-      AND table_name = 'contactos_emergencia'
-      AND constraint_name = 'fk_contactos_usuario'
-  ),
-  'SELECT 1',
-  'ALTER TABLE contactos_emergencia ADD CONSTRAINT fk_contactos_usuario FOREIGN KEY (usuario_id) REFERENCES ciudadanos(id) ON DELETE CASCADE'
-);
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
-SET @ddl = IF(
-  EXISTS(
-    SELECT 1 FROM information_schema.referential_constraints
-    WHERE constraint_schema = DATABASE()
-      AND table_name = 'sesiones_refresh'
-      AND constraint_name = 'fk_sesiones_refresh_usuario'
-      AND referenced_table_name = 'usuarios'
-  ),
-  'ALTER TABLE sesiones_refresh DROP FOREIGN KEY fk_sesiones_refresh_usuario',
-  'SELECT 1'
-);
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
-SET @ddl = IF(
-  EXISTS(
-    SELECT 1 FROM information_schema.referential_constraints
-    WHERE constraint_schema = DATABASE()
-      AND table_name = 'sesiones_refresh'
-      AND constraint_name = 'fk_sesiones_refresh_usuario'
-  ),
-  'SELECT 1',
-  'ALTER TABLE sesiones_refresh ADD CONSTRAINT fk_sesiones_refresh_usuario FOREIGN KEY (usuario_id) REFERENCES ciudadanos(id) ON DELETE CASCADE'
-);
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
-SET @ddl = IF(
-  EXISTS(
-    SELECT 1 FROM information_schema.referential_constraints
-    WHERE constraint_schema = DATABASE()
-      AND table_name = 'emergencias'
-      AND constraint_name = 'fk_emergencias_usuario'
-      AND referenced_table_name = 'usuarios'
-  ),
-  'ALTER TABLE emergencias DROP FOREIGN KEY fk_emergencias_usuario',
-  'SELECT 1'
-);
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
-SET @ddl = IF(
-  EXISTS(
-    SELECT 1 FROM information_schema.referential_constraints
-    WHERE constraint_schema = DATABASE()
-      AND table_name = 'emergencias'
-      AND constraint_name = 'fk_emergencias_usuario'
-  ),
-  'SELECT 1',
-  'ALTER TABLE emergencias ADD CONSTRAINT fk_emergencias_usuario FOREIGN KEY (usuario_id) REFERENCES ciudadanos(id) ON DELETE RESTRICT'
-);
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
-SET @ddl = IF(
-  EXISTS(
-    SELECT 1 FROM information_schema.referential_constraints
-    WHERE constraint_schema = DATABASE()
-      AND table_name = 'historial_emergencia'
-      AND constraint_name = 'fk_historial_actor'
-      AND referenced_table_name = 'usuarios'
-  ),
-  'ALTER TABLE historial_emergencia DROP FOREIGN KEY fk_historial_actor',
-  'SELECT 1'
-);
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
-SET @ddl = IF(
-  EXISTS(
-    SELECT 1 FROM information_schema.referential_constraints
-    WHERE constraint_schema = DATABASE()
-      AND table_name = 'historial_emergencia'
-      AND constraint_name = 'fk_historial_actor'
-  ),
-  'SELECT 1',
-  'ALTER TABLE historial_emergencia ADD CONSTRAINT fk_historial_actor FOREIGN KEY (actor_usuario_id) REFERENCES ciudadanos(id) ON DELETE SET NULL'
-);
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
-INSERT INTO tipos_emergencia (codigo, nombre, descripcion, icono, color_hex, orden) VALUES
+-- ----------------------------------------------------------------------------
+-- 5. Catalogos de emergencia
+-- ----------------------------------------------------------------------------
+INSERT INTO `tipos_emergencia` (`codigo`, `nombre`, `descripcion`, `icono`, `color_hex`, `orden`) VALUES
   ('MEDICA', 'Emergencia médica', 'Lesión, enfermedad súbita o riesgo vital', 'medical-bag', '#D32F2F', 10),
   ('ACCIDENTE', 'Accidente', 'Accidente vial, doméstico o laboral', 'car-emergency', '#EF6C00', 20),
   ('INCENDIO', 'Incendio', 'Fuego, humo o riesgo de explosión', 'fire', '#C62828', 30),
   ('SEGURIDAD', 'Seguridad', 'Situación de violencia o amenaza', 'shield-alert', '#6A1B9A', 40),
-  ('OTRO', 'Otra emergencia', 'Situación urgente no clasificada', 'alert-circle', '#455A64', 50)
-ON DUPLICATE KEY UPDATE nombre = VALUES(nombre), descripcion = VALUES(descripcion), icono = VALUES(icono), color_hex = VALUES(color_hex), orden = VALUES(orden), activo = TRUE;
+  ('OTRO', 'Otra emergencia', 'Situación urgente no clasificada', 'alert-circle', '#455A64', 50);
 
-INSERT INTO estados_emergencia (codigo, nombre, es_final, orden) VALUES
+INSERT INTO `estados_emergencia` (`codigo`, `nombre`, `es_final`, `orden`) VALUES
   ('REPORTADA', 'Reportada', FALSE, 10),
   ('VALIDANDO', 'En validación', FALSE, 20),
   ('ASIGNADA', 'Ayuda asignada', FALSE, 30),
   ('EN_CAMINO', 'Ayuda en camino', FALSE, 40),
   ('EN_SITIO', 'Ayuda en el lugar', FALSE, 50),
   ('ATENDIDA', 'Atendida', TRUE, 60),
-  ('CANCELADA', 'Cancelada', TRUE, 70)
-ON DUPLICATE KEY UPDATE nombre = VALUES(nombre), es_final = VALUES(es_final), orden = VALUES(orden), activo = TRUE;
+  ('CANCELADA', 'Cancelada', TRUE, 70);
 
+-- ----------------------------------------------------------------------------
+-- 6. Centros de salud (RUES)
+-- ----------------------------------------------------------------------------
 INSERT INTO centros_salud (
   uuid,
   numero_reporte,
@@ -817,33 +625,21 @@ INSERT INTO centros_salud (
   (UUID(), 201, '400238', 'Oruro', 'RED URBANA (1)', 'ORURO', 'BANCO DE SANGRE ORURO', 'Público', 'G.A.M.', 'Banco de Sangre', 'BANCO DE SANGRE', 'URBANO', 'ORURO', 'LEON S/N BRASIL Y TEJERINA', -17.96421, -67.10401, 0, 0, 'MIGRADO', '2023-12-27', '2024-12-31', 'reporte_ubicacion (1).xlsx', 2026, 1),
   (UUID(), 202, '400239', 'Oruro', 'RED URBANA (1)', 'ORURO', '7 DE MARZO', 'Público', 'G.A.M.', '1er NIVEL', 'C.S. AMBULATORIO', 'URBANO', 'ORURO', 'SAN ANTONIO, LIMA Y MADRID', -17.985942, -67.08476, 0, 271, 'MIGRADO', '2023-12-27', '2025-12-03', 'reporte_ubicacion (1).xlsx', 2026, 1),
   (UUID(), 203, '400244', 'Oruro', 'RED URBANA (1)', 'ORURO', 'PAPA JUAN PABLO II', 'Público', 'G.A.M.', '1er NIVEL', 'C.S. AMBULATORIO', 'URBANO', 'ORURO', 'CALLE VÍA LOCAL 03 S/N ENTRE VILLA LOCAL 05 Y VÍA LOCAL 06, VÍA LOCAL P 3, URBANIZACIÓN CIO 1', -17.952268, -67.067275, 0, 0, 'MIGRADO', '2023-12-27', '2024-12-30', 'reporte_ubicacion (1).xlsx', 2026, 1),
-  (UUID(), 204, '400253', 'Oruro', 'RED URBANA (1)', 'ORURO', 'CENTRO DE SALUD "LOS ANGELES"', 'Público', 'G.A.D.', '1er NIVEL', 'C.S. AMBULATORIO', 'URBANO', 'ORURO', 'CALLE 4 / CALLE G Y AB', -17.967711395537453, -67.06114777704143, 0, 0, 'MIGRADO', '2023-12-27', '2024-12-24', 'reporte_ubicacion (1).xlsx', 2026, 1)
-ON DUPLICATE KEY UPDATE
-  numero_reporte = VALUES(numero_reporte),
-  departamento = VALUES(departamento),
-  red_salud = VALUES(red_salud),
-  municipio = VALUES(municipio),
-  nombre = VALUES(nombre),
-  subsector = VALUES(subsector),
-  institucion = VALUES(institucion),
-  nivel = VALUES(nivel),
-  tipo = VALUES(tipo),
-  ambito = VALUES(ambito),
-  localidad = VALUES(localidad),
-  direccion = VALUES(direccion),
-  latitud = VALUES(latitud),
-  longitud = VALUES(longitud),
-  cerca_frontera = VALUES(cerca_frontera),
-  distancia_frontera_km = VALUES(distancia_frontera_km),
-  estado_fuente = VALUES(estado_fuente),
-  fecha_registro_fuente = VALUES(fecha_registro_fuente),
-  fecha_modificacion_fuente = VALUES(fecha_modificacion_fuente),
-  fuente_archivo = VALUES(fuente_archivo),
-  gestion_fuente = VALUES(gestion_fuente),
-  activo = VALUES(activo),
-  updated_at = CURRENT_TIMESTAMP;
+  (UUID(), 204, '400253', 'Oruro', 'RED URBANA (1)', 'ORURO', 'CENTRO DE SALUD "LOS ANGELES"', 'Público', 'G.A.D.', '1er NIVEL', 'C.S. AMBULATORIO', 'URBANO', 'ORURO', 'CALLE 4 / CALLE G Y AB', -17.967711395537453, -67.06114777704143, 0, 0, 'MIGRADO', '2023-12-27', '2024-12-24', 'reporte_ubicacion (1).xlsx', 2026, 1);
 
-SET FOREIGN_KEY_CHECKS = 1;
+COMMIT;
 
--- Verificación esperada: 204 centros importados.
-SELECT COUNT(*) AS centros_salud_importados FROM centros_salud;
+-- ----------------------------------------------------------------------------
+-- Verificacion esperada: rol 2, usuario 3, ciudadanos 2, perfiles 2,
+-- contactos 2, tipos 5, estados 7, centros 204, el resto 0.
+-- ----------------------------------------------------------------------------
+SELECT 'rol' AS tabla, COUNT(*) AS filas FROM `rol`
+UNION ALL SELECT 'usuario', COUNT(*) FROM `usuario`
+UNION ALL SELECT 'ciudadanos', COUNT(*) FROM `ciudadanos`
+UNION ALL SELECT 'perfiles', COUNT(*) FROM `perfiles`
+UNION ALL SELECT 'contactos_emergencia', COUNT(*) FROM `contactos_emergencia`
+UNION ALL SELECT 'tipos_emergencia', COUNT(*) FROM `tipos_emergencia`
+UNION ALL SELECT 'estados_emergencia', COUNT(*) FROM `estados_emergencia`
+UNION ALL SELECT 'centros_salud', COUNT(*) FROM `centros_salud`
+UNION ALL SELECT 'emergencias', COUNT(*) FROM `emergencias`
+UNION ALL SELECT 'sesiones_refresh', COUNT(*) FROM `sesiones_refresh`;

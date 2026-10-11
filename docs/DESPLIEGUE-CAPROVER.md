@@ -62,7 +62,7 @@ CapRover, en `181.115.157.166:4444`. Si todavía no la creaste:
 
 ```bash
 mysql -h 181.115.157.166 -P 4444 -u root -p -e "CREATE DATABASE \`central-db\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-mysql -h 181.115.157.166 -P 4444 -u root -p central-db < docs/backend/168-emergencias-integrada.sql
+mysql -h 181.115.157.166 -P 4444 -u root -p central-db < docs/backend/reinicio-base-datos.sql
 ```
 
 Si el servidor de CapRover es distinto al que usabas antes, agrega su IP a la
@@ -112,13 +112,6 @@ JWT_SECRET=COLOCA_AQUI_UNA_CLAVE_LARGA_Y_ALEATORIA
 JWT_ISSUER=https://api-central.sedesoruro.gob.bo
 JWT_EXPIRES_IN=15m
 JWT_REFRESH_DAYS=30
-SECURITY_SEED_ENABLED=false
-SECURITY_SEED_EMAIL=
-SECURITY_SEED_PASSWORD=
-SECURITY_SEED_FIRST_NAME=
-SECURITY_SEED_FIRST_LAST_NAME=
-SECURITY_SEED_SECOND_LAST_NAME=
-OPERATIONS_SEED_PASSWORD=
 STORAGE_LOCAL_DIR=/var/lib/emergencias168/uploads
 STORAGE_PUBLIC_URL=https://api-central.sedesoruro.gob.bo/api/storage/file
 ```
@@ -128,9 +121,6 @@ Genera el `JWT_SECRET` con:
 ```bash
 openssl rand -base64 48
 ```
-
-Deja `SECURITY_SEED_ENABLED=false`: en `true` crea un administrador con
-contraseña conocida, y en un servidor público eso es una puerta abierta.
 
 ### HTTP Settings
 
