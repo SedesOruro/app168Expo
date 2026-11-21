@@ -7,6 +7,7 @@ Guía con explicaciones: [docs/DESPLIEGUE-CAPROVER.md](docs/DESPLIEGUE-CAPROVER.
 |---|---|---|
 | Backend | `api-central` | `api-central.sedesoruro.gob.bo` |
 | Panel admin | `central` | `central.sedesoruro.gob.bo` |
+| PWA ciudadana | `emergencias168` | `emergencias168.sedesoruro.gob.bo` |
 
 ---
 
@@ -44,7 +45,56 @@ rm admin.tar
 
 ---
 
-## 3. Base de datos (solo para reiniciarla — BORRA TODO)
+## 3. PWA ciudadana (frontend)
+
+### Una sola vez
+
+1. En CapRover crea la app `emergencias168`, asígnale el dominio
+   `emergencias168.sedesoruro.gob.bo` y activa **HTTPS** (Enable HTTPS + Force HTTPS).
+   Sin HTTPS no se instala como app ni funcionan ubicación, cámara ni micrófono.
+2. Agrega ese dominio a `CORS_ORIGIN` de `api-central` (variables de entorno en CapRover,
+   separado por comas) y guarda para que el backend se reinicie:
+   ```
+   CORS_ORIGIN=https://central.sedesoruro.gob.bo,https://emergencias168.sedesoruro.gob.bo
+   ```
+3. Crea `frontend/.env.production` (Vite incrusta estos valores al compilar; cambiarlos en
+   el panel de CapRover no tiene efecto):
+   ```bash
+   cp frontend/.env.production.example frontend/.env.production
+   ```
+   ```
+   VITE_API_URL=https://api-central.sedesoruro.gob.bo/api
+   VITE_SOCKET_URL=https://api-central.sedesoruro.gob.bo
+   VITE_MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
+   ```
+
+### Cada deploy
+
+```bash
+npm --prefix frontend run typecheck
+npm --prefix frontend test
+tar --exclude=node_modules --exclude=dist --exclude=.env -cf frontend.tar -C frontend .
+caprover deploy -n sedes -a emergencias168 -t ./frontend.tar
+rm frontend.tar
+curl -sI https://emergencias168.sedesoruro.gob.bo/manifest.webmanifest | head -1
+```
+
+`--exclude=.env` excluye solo el `.env` de desarrollo; `.env.production` sí viaja en el tar.
+Si el build se detiene en CapRover, es `scripts/verificar-entorno.mjs` avisando que
+`.env.production` falta o apunta a `localhost`/`http://`.
+
+Los celulares que ya la instalaron se actualizan solos al abrirla (service worker en
+`autoUpdate`); no hay que reinstalar.
+
+### Instalar en el celular
+
+- **Android (Chrome):** abrir `https://emergencias168.sedesoruro.gob.bo` → botón **Instalar**
+  del inicio, o menú ⋮ → *Instalar app*.
+- **iPhone (Safari):** Compartir → *Agregar a inicio*.
+
+---
+
+## 4. Base de datos (solo para reiniciarla — BORRA TODO)
 
 ```bash
 mysql -h 181.115.157.166 -P 4444 -u root -p central-db < docs/backend/reinicio-base-datos.sql
@@ -52,7 +102,7 @@ mysql -h 181.115.157.166 -P 4444 -u root -p central-db < docs/backend/reinicio-b
 
 ---
 
-## 4. APK release
+## 5. APK release
 
 Solo procesadores ARM (`arm64-v8a`, `armeabi-v7a`) y R8 activado; se configura en `app.json` (`expo-build-properties`).
 

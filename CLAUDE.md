@@ -2,13 +2,14 @@
 
 # Emergencias 168 — monorepo
 
-Tres aplicaciones en un solo repositorio, contra una sola base MySQL:
+Cuatro aplicaciones en un solo repositorio, contra una sola base MySQL:
 
 | Ruta       | Qué es                          | Stack                                   | Puerto dev |
 |------------|---------------------------------|-----------------------------------------|-----------|
 | `src/`     | App móvil del ciudadano         | Expo SDK 57 + React Native 0.86 + Paper | Metro 8081 |
 | `backend/` | API REST + WebSocket            | Node + Express + TypeScript + Sequelize | 8090 (ver nota) |
 | `admin/`   | Panel web para operadores       | React + Vite + MUI                      | 3000 |
+| `frontend/`| PWA del ciudadano (clon web de `src/`) | React + Vite + MUI + vite-plugin-pwa | 3001 |
 
 Levantar todo en local: **`docs/LEVANTAR-LOCAL.md`** (comandos verificados, orden de arranque,
 problemas frecuentes). No reinventes los comandos, lee ese archivo.
@@ -88,6 +89,12 @@ layouts, utils) y el arranque en `src/app/` (navegación, providers, bootstrap).
 **Admin** — `admin/src/components/core/` son los componentes genéricos reutilizables
 (`DataTable`, `FormDialog`, `ReportTable`, `SimpleTable`); `admin/src/modules/` son las
 pantallas de negocio; `admin/src/services/` el acceso HTTP sobre `BaseService`.
+
+**Frontend (PWA)** — misma estructura que `admin/` (`components/`, `layouts/`, `pages/`,
+`services/`, `context/`, `theme/`). Replica pantalla por pantalla la app móvil contra los mismos
+endpoints `/auth/*` y `/mobile/*`. Equivalencias nativas: tokens en localStorage (no SecureStore),
+llamada al 168 por `tel:` (el navegador no permite ACTION_CALL), audio con MediaRecorder
+(prefiere `audio/mp4`), mapa con `maplibre-gl` (worker fijado con `setWorkerUrl`).
 
 ## Convenciones
 
